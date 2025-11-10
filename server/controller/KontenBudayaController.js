@@ -1,288 +1,393 @@
-const KontenBudaya = require('../models/KontenBudaya.js'); // Sesuaikan path
-const mongoose = require('mongoose');
+import KontenBudaya from '../models/KontenBudaya.js';
+import axios from 'axios';
 
-// --- 1. FUNGSI PUBLIK (Read-Only, untuk semua pengunjung) ---
+// Base URL untuk API wilayah Indonesia
+const WILAYAH_API = 'https://www.emsifa.com/api-wilayah-indonesia/api';
 
-/**
- * @desc    Mendapatkan semua konten yang sudah 'published' (dengan filter & pagination)
- * @route   GET /api/konten
- * @access  Public
- */
-const getPublishedKonten = async (req, res) => {
+// Helper function untuk fetch data wilayah
+const fetchWilayah = async (url) => {
   try {
-    const { kategori, provinsi, search, sort, page = 1, limit = 12 } = req.query;
-
-    let filter = { status: 'published' };
-    if (kategori) filter.kategori = kategori;
-    if (provinsi) filter.provinsi = provinsi;
-    if (search) {
-      // Cari di judul, tags, atau deskripsi
-      filter.$or = [
-        { judul: { $regex: search, $options: 'i' } },
-        { deskripsi: { $regex: search, $options: 'i' } },
-        { tags: { $in: [new RegExp(search, 'i')] } }
-      ];
-    }
-
-    let sortOptions = {};
-    if (sort === 'populer') {
-      sortOptions = { jumlah_views: -1 };
-    } else if (sort === 'rating') {
-      sortOptions = { rating_konten: -1 };
-    } else {
-      sortOptions = { createdAt: -1 }; // Terbaru
-    }
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    const kontenList = await KontenBudaya.find(filter)
-      .populate('kategori', 'nama_kategori icon')
-      .populate('provinsi', 'nama_provinsi')
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(parseInt(limit));
-    
-    const totalKonten = await KontenBudaya.countDocuments(filter);
-    const totalPages = Math.ceil(totalKonten / limit);
-
-    res.status(200).json({
-      data: kontenList,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages,
-        totalItems: totalKonten,
-      }
-    });
-
+    const response = await axios.get(url);
+    return response.data;
   } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
+    console.error('Error fetching wilayah:', error);
+    return [];
   }
 };
 
-/**
- * @desc    Mendapatkan detail satu konten 'published' (dan +1 view)
- * @route   GET /api/konten/:id
- * @access  Public
- */
-const getPublishedKontenById = async (req, res) => {
+// GET provinces
+export const getProvinces = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    // Gunakan findOneAndUpdate untuk mencari sekaligus menambah view (atomik)
-    const konten = await KontenBudaya.findOneAndUpdate(
-      { _id: id, status: 'published' },
-      { $inc: { jumlah_views: 1 } },
-      { new: true } // Mengembalikan dokumen yang sudah diupdate
-    )
-    .populate('kategori', 'nama_kategori')
-    .populate('provinsi', 'nama_provinsi')
-    .populate('dibuat_oleh', 'nama foto_profil'); // Tampilkan info kontributor
-
-    if (!konten) {
-      return res.status(404).json({ message: 'Konten tidak ditemukan atau belum dipublikasi' });
-    }
+    console.log('=== GET PROVINCES (API) ===');
+    const provinces = await fetchWilayah(`${WILAYAH_API}/provinces.json`);
     
-    res.status(200).json(konten);
-  } catch (error) {
-     if (error.kind === 'ObjectId') {
-       return res.status(404).json({ message: 'Konten tidak ditemukan' });
-    }
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
+    console.log('✅ Provinces loaded:', provinces.length);
+    res.json(provinces);
+  } catch (err) {
+    console.error('❌ Error in getProvinces:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
-
-// --- 2. FUNGSI PENGGUNA (Auth 'User' diperlukan) ---
-// Berasumsi 'req.user.id' tersedia dari middleware auth
-
-/**
- * @desc    Pengguna mengirimkan usulan konten baru
- * @route   POST /api/konten/usulkan
- * @access  Private (Pengguna)
- */
-const submitKonten = async (req, res) => {
+// GET regencies by province
+export const getRegencies = async (req, res) => {
   try {
-    const id_pengguna = req.user.id;
-    // Ambil semua data KECUALI status (yg akan di-set manual)
-    const { status, ...dataKonten } = req.body;
+    const { provinceId } = req.params;
+    console.log('=== GET REGENCIES (API) ===');
+    console.log('Province ID:', provinceId);
     
-    if (!dataKonten.judul || !dataKonten.kategori || !dataKonten.provinsi || !dataKonten.deskripsi || !dataKonten.media_konten) {
-        return res.status(400).json({ message: 'Data wajib (judul, kategori, provinsi, deskripsi, media) harus diisi' });
+    const regencies = await fetchWilayah(`${WILAYAH_API}/regencies/${provinceId}.json`);
+    
+    console.log('✅ Regencies loaded:', regencies.length);
+    res.json(regencies);
+  } catch (err) {
+    console.error('❌ Error in getRegencies:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET districts by regency
+export const getDistricts = async (req, res) => {
+  try {
+    const { regencyId } = req.params;
+    console.log('=== GET DISTRICTS (API) ===');
+    console.log('Regency ID:', regencyId);
+    
+    const districts = await fetchWilayah(`${WILAYAH_API}/districts/${regencyId}.json`);
+    
+    console.log('✅ Districts loaded:', districts.length);
+    if (districts.length > 0) {
+      console.log('Sample district:', districts[0]);
     }
-
-    // PENTING: Asumsi 'media_konten' berisi URL dari Cloudinary
-    // setelah diupload oleh frontend React.
-
-    const newKonten = new KontenBudaya({
-      ...dataKonten,
-      dibuat_oleh: id_pengguna,
-      status: 'pending' // Status otomatis 'pending' menunggu review Admin
-    });
     
-    const savedKonten = await newKonten.save();
-    res.status(201).json({ message: 'Usulan konten berhasil dikirim dan sedang direview', data: savedKonten });
-    
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
+    res.json(districts);
+  } catch (err) {
+    console.error('❌ Error in getDistricts:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
-/**
- * @desc    Pengguna mendapatkan daftar konten yang pernah mereka submit
- * @route   GET /api/konten/saya
- * @access  Private (Pengguna)
- */
-const getMySubmissions = async (req, res) => {
+// Helper untuk get nama wilayah (untuk display)
+const getWilayahName = async (id, type) => {
   try {
-    const id_pengguna = req.user.id;
-    const myKonten = await KontenBudaya.find({ dibuat_oleh: id_pengguna })
-      .sort({ createdAt: -1 })
-      .select('judul status createdAt status'); // Hanya field yg relevan
-      
-    res.status(200).json(myKonten);
+    let url;
+    switch (type) {
+      case 'province':
+        const provinces = await fetchWilayah(`${WILAYAH_API}/provinces.json`);
+        const province = provinces.find(p => p.id === id);
+        return province?.name || '-';
+      case 'regency':
+        const regencies = await fetchWilayah(`${WILAYAH_API}/regencies/${id.substring(0, 2)}.json`);
+        const regency = regencies.find(r => r.id === id);
+        return regency?.name || '-';
+      case 'district':
+        const districts = await fetchWilayah(`${WILAYAH_API}/districts/${id.substring(0, 4)}.json`);
+        const district = districts.find(d => d.id === id);
+        return district?.name || '-';
+      default:
+        return '-';
+    }
   } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
+    console.error('Error getting wilayah name:', error);
+    return '-';
   }
 };
 
-// ... Fungsi untuk 'Like' dan 'Ulasan' sebaiknya ada di controller terpisah ...
-// (Misal: 'ulasanController.js' yang mengelola model 'Ulasan')
-
-
-// --- 3. FUNGSI ADMIN (Auth 'Admin' diperlukan) ---
-// Berasumsi 'req.admin.id' tersedia dari middleware auth admin
-
-/**
- * @desc    (Admin) Mendapatkan semua konten (untuk dashboard review)
- * @route   GET /api/admin/konten
- * @access  Private (Admin)
- */
-const getAllKontenForAdmin = async (req, res) => {
+// GET all konten budaya (dengan filter status & user)
+export const getAllKontenBudaya = async (req, res) => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
+    const { status, userId, isAdmin } = req.query;
+    
+    console.log('=== GET ALL KONTEN BUDAYA ===');
+    console.log('userId:', userId);
+    console.log('isAdmin:', isAdmin);
+    console.log('status:', status);
     
     let filter = {};
-    if (status) filter.status = status; // Filter by pending, published, etc.
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
     
-    const kontenList = await KontenBudaya.find(filter)
-      .populate('kategori', 'nama_kategori')
-      .populate('dibuat_oleh', 'nama email')
-      .sort({ status: 1, createdAt: -1 }) // Tampilkan 'pending' di atas
-      .skip(skip)
-      .limit(parseInt(limit));
+    // ADMIN: Bisa lihat konten yang sudah di-submit + draft milik sendiri
+    if (isAdmin === 'true') {
+      console.log('👑 Admin mode');
       
-    const totalKonten = await KontenBudaya.countDocuments(filter);
-    const totalPages = Math.ceil(totalKonten / limit);
-
-     res.status(200).json({
-      data: kontenList,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages,
-        totalItems: totalKonten,
+      if (status === 'draft') {
+        // Admin hanya bisa lihat draft miliknya sendiri
+        if (!userId) {
+          filter = { status: 'draft', dibuat_oleh: null }; // Tidak akan ada hasil
+        } else {
+          filter = {
+            status: 'draft',
+            dibuat_oleh: userId
+          };
+        }
+      } else if (status) {
+        // Filter status lain (pending, published, rejected) - semua user
+        filter.status = status;
+      } else {
+        // Tanpa filter: pending, published, rejected (semua user) + draft milik admin sendiri
+        if (userId) {
+          filter = {
+            $or: [
+              { status: { $in: ['pending', 'published', 'rejected'] } },
+              { status: 'draft', dibuat_oleh: userId }
+            ]
+          };
+        } else {
+          filter.status = { $in: ['pending', 'published', 'rejected'] };
+        }
       }
-    });
-    
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
+    } 
+    // USER BIASA: Hanya lihat konten miliknya sendiri
+    else {
+      console.log('👤 User mode: showing only own content');
+      
+      if (!userId) {
+        return res.status(400).json({ message: 'User ID required for non-admin users' });
+      }
+      
+      // Filter berdasarkan status
+      if (status === 'draft') {
+        // Draft: Hanya milik user sendiri
+        filter = {
+          dibuat_oleh: userId,
+          status: 'draft'
+        };
+      } else if (status === 'published') {
+        // Published: Hanya milik user sendiri
+        filter = {
+          dibuat_oleh: userId,
+          status: 'published'
+        };
+      } else if (status === 'pending') {
+        // Pending: Hanya milik user sendiri
+        filter = {
+          dibuat_oleh: userId,
+          status: 'pending'
+        };
+      } else if (status === 'rejected') {
+        // Rejected: Hanya milik user sendiri
+        filter = {
+          dibuat_oleh: userId,
+          status: 'rejected'
+        };
+      } else {
+        // Tanpa filter status: Semua konten milik user sendiri
+        filter = {
+          dibuat_oleh: userId
+        };
+      }
+    }
+
+    console.log('Filter applied:', JSON.stringify(filter));
+
+    const konten = await KontenBudaya.find(filter)
+      .populate('dibuat_oleh', 'nama_lengkap email')
+      .populate('kategori', 'nama_kategori')
+      .sort({ createdAt: -1 });
+
+    console.log(`✅ Found ${konten.length} konten`);
+
+    // Get nama wilayah untuk setiap konten
+    const hasil = await Promise.all(konten.map(async k => {
+      const provinsiNama = await getWilayahName(k.provinsiId, 'province');
+      const kabupatenNama = k.kabupatenId ? await getWilayahName(k.kabupatenId, 'regency') : '-';
+      const kecamatanNama = k.kecamatanId ? await getWilayahName(k.kecamatanId, 'district') : '-';
+
+      return {
+        ...k._doc,
+        provinsiNama,
+        kabupatenNama,
+        kecamatanNama
+      };
+    }));
+
+    res.json(hasil);
+  } catch (err) {
+    console.error('❌ Error in getAllKontenBudaya:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
-/**
- * @desc    (Admin) Mengubah status konten (Approve/Reject usulan)
- * @route   PATCH /api/admin/konten/:id/status
- * @access  Private (Admin)
- */
-const setKontenStatus = async (req, res) => {
+// GET konten budaya publik (hanya published)
+export const getKontenBudayaPublik = async (req, res) => {
+  try {
+    const konten = await KontenBudaya.find({ status: 'published' })
+      .populate('dibuat_oleh', 'nama_lengkap')
+      .populate('kategori', 'nama_kategori')
+      .sort({ createdAt: -1 });
+
+    const hasil = await Promise.all(konten.map(async k => {
+      const provinsiNama = await getWilayahName(k.provinsiId, 'province');
+      const kabupatenNama = k.kabupatenId ? await getWilayahName(k.kabupatenId, 'regency') : '-';
+      const kecamatanNama = k.kecamatanId ? await getWilayahName(k.kecamatanId, 'district') : '-';
+
+      return {
+        ...k._doc,
+        provinsiNama,
+        kabupatenNama,
+        kecamatanNama
+      };
+    }));
+
+    res.json(hasil);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET konten budaya by ID
+export const getKontenBudayaById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body; // Misal: "published" atau "rejected"
+    const k = await KontenBudaya.findById(id)
+      .populate('dibuat_oleh', 'nama_lengkap email')
+      .populate('kategori', 'nama_kategori');
+    
+    if (!k) return res.status(404).json({ message: 'Konten tidak ditemukan' });
 
-    if (!['published', 'draft', 'pending', 'rejected'].includes(status)) {
+    k.jumlah_views += 1;
+    await k.save();
+
+    const provinsiNama = await getWilayahName(k.provinsiId, 'province');
+    const kabupatenNama = k.kabupatenId ? await getWilayahName(k.kabupatenId, 'regency') : '-';
+    const kecamatanNama = k.kecamatanId ? await getWilayahName(k.kecamatanId, 'district') : '-';
+
+    res.json({
+      ...k._doc,
+      provinsiNama,
+      kabupatenNama,
+      kecamatanNama
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// CREATE konten budaya dengan upload media
+export const createKontenBudaya = async (req, res) => {
+  try {
+    const data = JSON.parse(req.body.data || '{}');
+    const userId = req.body.userId || data.dibuat_oleh;
+    
+    console.log('=== CREATE KONTEN BUDAYA ===');
+    console.log('userId:', userId);
+    
+    if (!userId) {
+      return res.status(400).json({ 
+        message: 'User ID tidak ditemukan. Harap login kembali.' 
+      });
+    }
+    
+    const media_konten = [];
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        let type = 'image';
+        if (file.mimetype.startsWith('video/')) type = 'video';
+        if (file.mimetype.startsWith('audio/')) type = 'audio';
+        
+        media_konten.push({
+          url: file.path,
+          type: type
+        });
+      });
+    }
+
+    const newKonten = new KontenBudaya({
+      ...data,
+      media_konten,
+      dibuat_oleh: userId
+    });
+
+    await newKonten.save();
+    
+    const populatedKonten = await KontenBudaya.findById(newKonten._id)
+      .populate('dibuat_oleh', 'nama_lengkap email')
+      .populate('kategori', 'nama_kategori');
+    
+    console.log('✅ Konten created with dibuat_oleh:', populatedKonten.dibuat_oleh);
+    
+    res.status(201).json(populatedKonten);
+  } catch (err) {
+    console.error('❌ Error in createKontenBudaya:', err);
+    res.status(500).json({ 
+      message: 'Gagal membuat konten budaya', 
+      error: err.message 
+    });
+  }
+};
+
+// UPDATE konten budaya
+export const updateKontenBudaya = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = JSON.parse(req.body.data || '{}');
+    
+    if (req.files && req.files.length > 0) {
+      const newMedia = [];
+      req.files.forEach(file => {
+        let type = 'image';
+        if (file.mimetype.startsWith('video/')) type = 'video';
+        if (file.mimetype.startsWith('audio/')) type = 'audio';
+        
+        newMedia.push({
+          url: file.path,
+          type: type
+        });
+      });
+      
+      data.media_konten = [...(data.media_konten || []), ...newMedia];
+    }
+
+    const updated = await KontenBudaya.findByIdAndUpdate(id, data, { new: true })
+      .populate('dibuat_oleh', 'nama_lengkap email')
+      .populate('kategori', 'nama_kategori');
+      
+    if (!updated) return res.status(404).json({ message: 'Konten tidak ditemukan' });
+    
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Gagal update konten budaya' });
+  }
+};
+
+// UPDATE status konten (untuk admin)
+export const updateStatusKonten = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!['draft', 'pending', 'published', 'rejected'].includes(status)) {
       return res.status(400).json({ message: 'Status tidak valid' });
     }
 
-    const updatedKonten = await KontenBudaya.findByIdAndUpdate(
-      id,
-      { status: status },
+    const updated = await KontenBudaya.findByIdAndUpdate(
+      id, 
+      { status }, 
       { new: true }
-    );
+    )
+    .populate('dibuat_oleh', 'nama_lengkap email')
+    .populate('kategori', 'nama_kategori');
     
-    if (!updatedKonten) {
-      return res.status(404).json({ message: 'Konten tidak ditemukan' });
-    }
+    if (!updated) return res.status(404).json({ message: 'Konten tidak ditemukan' });
     
-    res.status(200).json({ message: `Status konten diupdate ke ${status}`, data: updatedKonten });
-
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Gagal update status konten' });
   }
 };
 
-/**
- * @desc    (Admin) Mengedit detail konten apapun
- * @route   PUT /api/admin/konten/:id
- * @access  Private (Admin)
- */
-const updateKontenByAdmin = async (req, res) => {
+// DELETE konten budaya
+export const deleteKontenBudaya = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    const updatedKonten = await KontenBudaya.findByIdAndUpdate(
-      id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    
-    if (!updatedKonten) {
-      return res.status(404).json({ message: 'Konten tidak ditemukan' });
-    }
-    
-    res.status(200).json(updatedKonten);
-  } catch (error) {
-     res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
+    const deleted = await KontenBudaya.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ message: 'Konten tidak ditemukan' });
+    res.json({ message: 'Konten berhasil dihapus' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Gagal hapus konten budaya' });
   }
-};
-
-/**
- * @desc    (Admin) Menghapus konten apapun
- * @route   DELETE /api/admin/konten/:id
- * @access  Private (Admin)
- */
-const deleteKontenByAdmin = async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    // TODO: Tambahkan logika untuk menghapus media (gambar/video)
-    // dari Cloudinary di sini jika perlu.
-    
-    const deletedKonten = await KontenBudaya.findByIdAndDelete(id);
-    
-    if (!deletedKonten) {
-      return res.status(404).json({ message: 'Konten tidak ditemukan' });
-    }
-    
-    res.status(200).json({ message: 'Konten berhasil dihapus' });
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
-  }
-};
-
-
-module.exports = {
-  // --- Rute Publik ---
-  getPublishedKonten,
-  getPublishedKontenById,
-  
-  // --- Rute Pengguna ---
-  submitKonten,
-  getMySubmissions,
-  
-  // --- Rute Admin ---
-  getAllKontenForAdmin,
-  setKontenStatus,
-  updateKontenByAdmin,
-  deleteKontenByAdmin
 };

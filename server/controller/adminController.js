@@ -1,15 +1,16 @@
-const Admin = require('../models/Admin'); // Sesuaikan path ke model Anda
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+// controller/AdminController.js
+import Admin from '../models/Admin.js';  // <-- ganti require
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 // Fungsi untuk membuat token JWT
 const createToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-    expiresIn: '1d', // Token berlaku selama 1 hari
+    expiresIn: '1d',
   });
 };
 
-const adminController = {
+const AdminController = {
   /**
    * @desc    Registrasi admin baru
    * @route   POST /api/admins/register
@@ -201,4 +202,4 @@ const adminController = {
   },
 };
 
-module.exports = adminController;
+export default AdminController;

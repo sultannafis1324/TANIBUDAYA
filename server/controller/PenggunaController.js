@@ -1,308 +1,239 @@
-const Pengguna = require('../models/Pengguna.js'); // Sesuaikan path
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+import Pengguna from '../models/Pengguna.js';
+import bcrypt from 'bcryptjs';
 
-// Fungsi helper untuk membuat token JWT
-// Anda HARUS menambahkan JWT_SECRET di file .env Anda
-const createToken = (id, role) => {
-  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-    expiresIn: '3d', // Token berlaku selama 3 hari
-  });
-};
-
-/**
- * @desc    Registrasi pengguna baru
- * @route   POST /api/pengguna/register
- * @access  Public
- */
-const registerPengguna = async (req, res) => {
+// GET all pengguna (untuk admin)
+export const getAllPengguna = async (req, res) => {
   try {
-    const { nama_lengkap, email, password, no_telepon } = req.body;
-
-    // 1. Validasi input dasar
-    if (!nama_lengkap || !email || !password) {
-      return res.status(400).json({ message: 'Nama, email, dan password wajib diisi' });
-    }
-
-    // 2. Cek apakah email sudah ada
-    const penggunaExists = await Pengguna.findOne({ email });
-    if (penggunaExists) {
-      return res.status(400).json({ message: 'Email sudah terdaftar' });
-    }
-
-    // 3. Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // 4. Buat pengguna baru
-    const newPengguna = new Pengguna({
-      nama_lengkap,
-      email,
-      password: hashedPassword,
-      no_telepon,
-      email_verified: false, // Perlu alur verifikasi email terpisah
-    });
-
-    // 5. Simpan ke database
-    const savedPengguna = await newPengguna.save();
+    console.log('=== GET ALL PENGGUNA ===');
     
-    // 6. Buat token (langsung login)
-    const token = createToken(savedPengguna._id, savedPengguna.role);
-
-    // 7. Kirim respon (JANGAN kirim password)
-    res.status(201).json({
-      _id: savedPengguna._id,
-      nama_lengkap: savedPengguna.nama_lengkap,
-      email: savedPengguna.email,
-      role: savedPengguna.role,
-      token: token,
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
-  }
-};
-
-/**
- * @desc    Login untuk pengguna
- * @route   POST /api/pengguna/login
- * @access  Public
- */
-const loginPengguna = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // 1. Cek email dan password
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email dan password wajib diisi' });
-    }
-
-    // 2. Cari pengguna berdasarkan email
-    const pengguna = await Pengguna.findOne({ email });
-    if (!pengguna) {
-      return res.status(401).json({ message: 'Email atau password salah' });
-    }
-
-    // 3. Cek status akun
-    if (pengguna.status_akun !== 'aktif') {
-      return res.status(403).json({ message: `Akun Anda ${pengguna.status_akun}, hubungi admin.` });
-    }
-
-    // 4. Bandingkan password
-    const isMatch = await bcrypt.compare(password, pengguna.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Email atau password salah' });
-    }
-
-    // 5. Update waktu login terakhir
-    pengguna.terakhir_login = new Date();
-    await pengguna.save();
-
-    // 6. Buat token dan kirim respon
-    const token = createToken(pengguna._id, pengguna.role);
-    res.status(200).json({
-      _id: pengguna._id,
-      nama_lengkap: pengguna.nama_lengkap,
-      email: pengguna.email,
-      role: pengguna.role,
-      foto_profil: pengguna.foto_profil,
-      token: token,
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
-  }
-};
-
-/**
- * @desc    Mendapatkan profil pengguna yang sedang login
- * @route   GET /api/pengguna/profile
- * @access  Private (Pengguna ybs)
- */
-const getMyProfile = async (req, res) => {
-  try {
-    // req.user.id didapat dari middleware auth
-    const pengguna = await Pengguna.findById(req.user.id)
-      .select('-password') // Jangan kirim password
-      .populate('provinsi', 'nama_provinsi'); // Tampilkan nama provinsinya
-
-    if (pengguna) {
-      res.status(200).json(pengguna);
-    } else {
-      res.status(404).json({ message: 'Pengguna tidak ditemukan' });
-    }
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
-  }
-};
-
-/**
- * @desc    Update profil pengguna yang sedang login
- * @route   PUT /api/pengguna/profile
- * @access  Private (Pengguna ybs)
- */
-const updateMyProfile = async (req, res) => {
-  try {
-    // Ambil data yang BOLEH diupdate oleh pengguna
-    const {
-      nama_lengkap,
-      no_telepon,
-      foto_profil,
-      tanggal_lahir,
-      jenis_kelamin,
-      alamat_lengkap,
-      provinsi,
-      kota,
-      kecamatan,
-      kelurahan,
-      kode_pos
-    } = req.body;
-
-    const updateData = {
-      nama_lengkap,
-      no_telepon,
-      foto_profil,
-      tanggal_lahir,
-      jenis_kelamin,
-      alamat_lengkap,
-      provinsi,
-      kota,
-      kecamatan,
-      kelurahan,
-      kode_pos
-    };
+    const { status_akun, role } = req.query;
+    let filter = {};
     
-    // Hapus field yang 'undefined' agar tidak menimpa data yg ada dgn null
-    Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
+    if (status_akun) filter.status_akun = status_akun;
+    if (role) filter.role = role;
 
-    const updatedPengguna = await Pengguna.findByIdAndUpdate(
-      req.user.id,
-      updateData,
-      { new: true, runValidators: true }
-    ).select('-password');
+    const pengguna = await Pengguna.find(filter)
+      .select('-password')
+      .sort({ createdAt: -1 });
 
-    res.status(200).json(updatedPengguna);
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
+    console.log(`✅ Found ${pengguna.length} pengguna`);
+    res.json(pengguna);
+  } catch (err) {
+    console.error('❌ Error in getAllPengguna:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
-/**
- * @desc    Update password pengguna
- * @route   PUT /api/pengguna/update-password
- * @access  Private (Pengguna ybs)
- */
-const updateMyPassword = async (req, res) => {
+// GET pengguna by ID
+export const getPenggunaById = async (req, res) => {
   try {
-    const { password_lama, password_baru } = req.body;
+    const { id } = req.params;
+    console.log('=== GET PENGGUNA BY ID ===');
+    console.log('ID:', id);
 
-    if (!password_lama || !password_baru) {
-      return res.status(400).json({ message: 'Password lama dan password baru wajib diisi' });
-    }
-
-    // 1. Ambil data pengguna (termasuk password)
-    const pengguna = await Pengguna.findById(req.user.id);
+    const pengguna = await Pengguna.findById(id).select('-password');
+    
     if (!pengguna) {
       return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
     }
 
-    // 2. Cek password lama
+    console.log('✅ Pengguna found:', pengguna.nama_lengkap);
+    res.json(pengguna);
+  } catch (err) {
+    console.error('❌ Error in getPenggunaById:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// UPDATE pengguna profile
+export const updatePengguna = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('=== UPDATE PENGGUNA ===');
+    console.log('ID:', id);
+
+    // Jika ada file foto profil dari cloudinary
+    if (req.file) {
+      req.body.foto_profil = req.file.path;
+    }
+
+    // Jangan update password di sini
+    delete req.body.password;
+
+    const updated = await Pengguna.findByIdAndUpdate(
+      id, 
+      req.body, 
+      { new: true }
+    ).select('-password');
+      
+    if (!updated) {
+      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
+    }
+    
+    console.log('✅ Pengguna updated:', updated.nama_lengkap);
+    res.json(updated);
+  } catch (err) {
+    console.error('❌ Error in updatePengguna:', err);
+    res.status(500).json({ message: 'Gagal update pengguna', error: err.message });
+  }
+};
+
+// UPDATE password
+export const updatePassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password_lama, password_baru } = req.body;
+
+    console.log('=== UPDATE PASSWORD ===');
+
+    if (!password_lama || !password_baru) {
+      return res.status(400).json({ 
+        message: 'Password lama dan password baru harus diisi' 
+      });
+    }
+
+    const pengguna = await Pengguna.findById(id);
+    if (!pengguna) {
+      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
+    }
+
+    // Cek password lama
     const isMatch = await bcrypt.compare(password_lama, pengguna.password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Password lama salah' });
+      return res.status(400).json({ message: 'Password lama tidak sesuai' });
     }
 
-    // 3. Hash password baru
+    // Hash password baru
     const salt = await bcrypt.genSalt(10);
-    pengguna.password = await bcrypt.hash(password_baru, salt);
-    
+    const hashedPassword = await bcrypt.hash(password_baru, salt);
+
+    pengguna.password = hashedPassword;
     await pengguna.save();
+
+    console.log('✅ Password updated');
+    res.json({ message: 'Password berhasil diubah' });
+  } catch (err) {
+    console.error('❌ Error in updatePassword:', err);
+    res.status(500).json({ message: 'Gagal update password', error: err.message });
+  }
+};
+
+// UPDATE status akun (untuk admin)
+export const updateStatusAkun = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status_akun } = req.body;
     
-    res.status(200).json({ message: 'Password berhasil diupdate' });
+    console.log('=== UPDATE STATUS AKUN ===');
+    console.log('ID:', id, 'Status:', status_akun);
 
-  } catch (error) {
-     res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
-  }
-};
-
-// --- FUNGSI ADMIN ---
-// (Hanya bisa diakses oleh Admin)
-
-/**
- * @desc    (Admin) Mendapatkan semua pengguna
- * @route   GET /api/admin/pengguna
- * @access  Private (Admin)
- */
-const getAllPengguna = async (req, res) => {
-  try {
-    const penggunaList = await Pengguna.find({}).select('-password');
-    res.status(200).json(penggunaList);
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
-  }
-};
-
-/**
- * @desc    (Admin) Mendapatkan detail satu pengguna
- * @route   GET /api/admin/pengguna/:id
- * @access  Private (Admin)
- */
-const getPenggunaById = async (req, res) => {
-  try {
-    const pengguna = await Pengguna.findById(req.params.id).select('-password');
-    if (pengguna) {
-      res.status(200).json(pengguna);
-    } else {
-      res.status(404).json({ message: 'Pengguna tidak ditemukan' });
-    }
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
-  }
-};
-
-/**
- * @desc    (Admin) Update pengguna (termasuk status, role, poin)
- * @route   PUT /api/admin/pengguna/:id
- * @access  Private (Admin)
- */
-const updatePenggunaByAdmin = async (req, res) => {
-  try {
-    // Admin boleh update semua field sensitif
-    const { password, ...updateData } = req.body;
-    
-    // Jika admin ingin reset password, mereka harus kirim field 'password'
-    if (password) {
-      const salt = await bcrypt.genSalt(10);
-      updateData.password = await bcrypt.hash(password, salt);
+    if (!['aktif', 'nonaktif', 'banned'].includes(status_akun)) {
+      return res.status(400).json({ message: 'Status tidak valid' });
     }
 
-    const updatedPengguna = await Pengguna.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
+    const updated = await Pengguna.findByIdAndUpdate(
+      id, 
+      { status_akun }, 
+      { new: true }
     ).select('-password');
-
-    if (updatedPengguna) {
-      res.status(200).json(updatedPengguna);
-    } else {
-      res.status(404).json({ message: 'Pengguna tidak ditemukan' });
+    
+    if (!updated) {
+      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
     }
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(400).json({ message: 'Email sudah digunakan' });
-    }
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
+    
+    console.log('✅ Status updated');
+    res.json(updated);
+  } catch (err) {
+    console.error('❌ Error in updateStatusAkun:', err);
+    res.status(500).json({ message: 'Gagal update status akun', error: err.message });
   }
 };
 
-module.exports = {
-  // Rute Auth & Profil
-  registerPengguna,
-  loginPengguna,
-  getMyProfile,
-  updateMyProfile,
-  updateMyPassword,
-  
-  // Rute Admin
-  getAllPengguna,
-  getPenggunaById,
-  updatePenggunaByAdmin
+// UPDATE role (pembeli/penjual/keduanya)
+export const updateRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    
+    console.log('=== UPDATE ROLE ===');
+    console.log('ID:', id, 'Role:', role);
+
+    if (!['pembeli', 'penjual', 'keduanya'].includes(role)) {
+      return res.status(400).json({ message: 'Role tidak valid' });
+    }
+
+    const updated = await Pengguna.findByIdAndUpdate(
+      id, 
+      { role }, 
+      { new: true }
+    ).select('-password');
+    
+    if (!updated) {
+      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
+    }
+    
+    console.log('✅ Role updated');
+    res.json(updated);
+  } catch (err) {
+    console.error('❌ Error in updateRole:', err);
+    res.status(500).json({ message: 'Gagal update role', error: err.message });
+  }
+};
+
+// DELETE pengguna (soft delete - set status nonaktif)
+export const deletePengguna = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('=== DELETE PENGGUNA ===');
+    console.log('ID:', id);
+
+    const updated = await Pengguna.findByIdAndUpdate(
+      id,
+      { status_akun: 'nonaktif' },
+      { new: true }
+    ).select('-password');
+    
+    if (!updated) {
+      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
+    }
+
+    console.log('✅ Pengguna deactivated');
+    res.json({ message: 'Pengguna berhasil dinonaktifkan', data: updated });
+  } catch (err) {
+    console.error('❌ Error in deletePengguna:', err);
+    res.status(500).json({ message: 'Gagal hapus pengguna', error: err.message });
+  }
+};
+
+// UPDATE poin game
+export const updatePoinGame = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { poin } = req.body;
+
+    console.log('=== UPDATE POIN GAME ===');
+
+    const pengguna = await Pengguna.findById(id);
+    if (!pengguna) {
+      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
+    }
+
+    pengguna.poin_game += poin;
+    
+    // Level up logic (setiap 1000 poin = 1 level)
+    pengguna.level_user = Math.floor(pengguna.poin_game / 1000) + 1;
+
+    await pengguna.save();
+
+    console.log('✅ Poin updated');
+    res.json({ 
+      message: 'Poin berhasil ditambahkan',
+      poin_game: pengguna.poin_game,
+      level_user: pengguna.level_user
+    });
+  } catch (err) {
+    console.error('❌ Error in updatePoinGame:', err);
+    res.status(500).json({ message: 'Gagal update poin', error: err.message });
+  }
 };

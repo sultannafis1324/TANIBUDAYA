@@ -1,16 +1,25 @@
+import mongoose from 'mongoose';
+
 const alamatSchema = new mongoose.Schema({
-  id_pengguna: { type: mongoose.Schema.Types.ObjectId, ref: 'Pengguna', required: true },
-  label_alamat: { type: String },
+  id_pengguna: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Pengguna', 
+    required: true 
+  },
+  label_alamat: { type: String }, // contoh: "Rumah", "Kantor", "Orang Tua"
   nama_penerima: { type: String, required: true },
   no_telepon: { type: String, required: true },
   alamat_lengkap: { type: String, required: true },
-  provinsi: { type: mongoose.Schema.Types.ObjectId, ref: 'Provinsi' },
-  kota: { type: String },
-  kecamatan: { type: String },
-  kelurahan: { type: String },
+  
+  // pakai ID dari indonesian-area
+  provinsiId: { type: String, required: true },
+  kabupatenId: { type: String },
+  kecamatanId: { type: String },
+  kelurahanId: { type: String },
+
   kode_pos: { type: String },
   catatan: { type: String },
-  is_default: { type: Boolean, default: false }
+  is_default: { type: Boolean, default: false },
 }, { timestamps: true });
 
-module.exports = mongoose.model('Alamat', alamatSchema);
+export default mongoose.model('Alamat', alamatSchema);

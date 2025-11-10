@@ -1,3 +1,5 @@
+import mongoose from 'mongoose'
+
 const notifikasiSchema = new mongoose.Schema({
   id_pengguna: { type: mongoose.Schema.Types.ObjectId, ref: 'Pengguna', required: true },
   judul: { type: String, required: true },
@@ -6,6 +8,7 @@ const notifikasiSchema = new mongoose.Schema({
   link: { type: String },
   is_read: { type: Boolean, default: false },
   icon: { type: String }
-}, { timestamps: true });
+}, { timestamps: true })
 
-module.exports = mongoose.model('Notifikasi', notifikasiSchema);
+const Notifikasi = mongoose.model('Notifikasi', notifikasiSchema)
+export default Notifikasi

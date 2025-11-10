@@ -1,12 +1,10 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const produkSchema = new mongoose.Schema({
   id_penjual: { type: mongoose.Schema.Types.ObjectId, ref: 'ProfileUsaha', required: true },
   nama_produk: { type: String, required: true },
   
-  // --- INI PERUBAHANNYA ---
   slug: { type: String, unique: true, index: true },
-  // -------------------------
 
   deskripsi: { type: String },
   kategori: { type: mongoose.Schema.Types.ObjectId, ref: 'Kategori', required: true },
@@ -16,8 +14,8 @@ const produkSchema = new mongoose.Schema({
   berat: { type: Number },
   
   media: [{
-    url: { type: String, required: true },
-    type: { type: String, enum: ['image', 'video'], required: true }
+    url: { type: String },
+    type: { type: String, enum: ['image', 'video']}
   }],
   
   spesifikasi: [{
@@ -36,4 +34,4 @@ const produkSchema = new mongoose.Schema({
   status: { type: String, enum: ['aktif', 'nonaktif', 'sold_out'], default: 'aktif' }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Produk', produkSchema);
+export default mongoose.model('Produk', produkSchema);

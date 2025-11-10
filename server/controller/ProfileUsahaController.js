@@ -1,266 +1,348 @@
-const ProfileUsaha = require('../models/ProfileUsaha.js');
-const Pengguna = require('../models/Pengguna.js'); // Dibutuhkan untuk update role
-const Notifikasi = require('../models/Notifikasi.js'); // Dibutuhkan untuk kirim notif
-const mongoose = require('mongoose');
-const slugify = require('slugify');
+import ProfileUsaha from '../models/ProfileUsaha.js';
+import Pengguna from '../models/Pengguna.js';
 
-/**
- * Helper function untuk membuat slug unik (jika "Toko Jaya" ada -> "toko-jaya-2")
- */
-const generateSlug = async (nama) => {
-  let baseSlug = slugify(nama, { lower: true, strict: true });
-  let slug = baseSlug;
-  let count = 2;
-  while (await ProfileUsaha.findOne({ slug: slug })) {
-    slug = `${baseSlug}-${count}`;
-    count++;
-  }
-  return slug;
+// Helper untuk generate slug
+const generateSlug = (nama) => {
+  return nama
+    .toLowerCase()
+    .replace(/[^\w ]+/g, '')
+    .replace(/ +/g, '-');
 };
 
-
-// --- FUNGSI PENJUAL (PENGGUNA) ---
-
-/**
- * @desc    Mendaftarkan profil usaha baru
- * @route   POST /api/usaha/daftar
- * @access  Private (Pengguna)
- */
-const createProfileUsaha = async (req, res) => {
-  const id_pengguna = req.user.id;
-  const { nama_usaha, deskripsi_usaha, bidang_usaha, alamat_usaha, no_telepon_usaha, email_usaha, npwp, dokumen_verifikasi, logo_usaha } = req.body;
-
-  if (!nama_usaha || !alamat_usaha || !no_telepon_usaha) {
-    return res.status(400).json({ message: 'Nama usaha, alamat, dan telepon wajib diisi' });
-  }
-
-  // Gunakan Transaksi untuk memastikan 2 update (ProfileUsaha & Pengguna) konsisten
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
+// GET all profile usaha (untuk admin)
+export const getAllProfileUsaha = async (req, res) => {
   try {
-    // 1. Buat Slug
-    const slug = await generateSlug(nama_usaha);
+    console.log('=== GET ALL PROFILE USAHA ===');
+    
+    const { status_verifikasi } = req.query;
+    let filter = {};
+    
+    if (status_verifikasi) {
+      filter.status_verifikasi = status_verifikasi;
+    }
 
-    // 2. Buat Profil Usaha Baru
-    const newProfile = new ProfileUsaha({
-      id_pengguna,
-      nama_usaha,
-      slug,
-      deskripsi_usaha,
-      bidang_usaha,
-      alamat_usaha,
-      no_telepon_usaha,
-      email_usaha,
-      npwp,
-      dokumen_verifikasi, // Asumsi array URL dari Cloudinary
-      logo_usaha, // Asumsi URL dari Cloudinary
-      status_verifikasi: 'pending' // Wajib pending
+    const usaha = await ProfileUsaha.find(filter)
+      .populate('id_pengguna', 'nama_lengkap email no_telepon')
+      .populate('id_alamat_usaha')
+      .sort({ createdAt: -1 });
+
+    console.log(`✅ Found ${usaha.length} profile usaha`);
+    res.json(usaha);
+  } catch (err) {
+    console.error('❌ Error in getAllProfileUsaha:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET profile usaha by user ID
+export const getProfileUsahaByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log('=== GET PROFILE USAHA BY USER ID ===');
+    console.log('User ID:', userId);
+
+    const usaha = await ProfileUsaha.findOne({ id_pengguna: userId })
+      .populate('id_pengguna', 'nama_lengkap email no_telepon')
+      .populate('id_alamat_usaha');
+    
+    if (!usaha) {
+      return res.status(404).json({ message: 'Profile usaha tidak ditemukan' });
+    }
+
+    console.log('✅ Profile usaha found:', usaha.nama_usaha);
+    res.json(usaha);
+  } catch (err) {
+    console.error('❌ Error in getProfileUsahaByUserId:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET profile usaha by ID
+export const getProfileUsahaById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('=== GET PROFILE USAHA BY ID ===');
+    console.log('ID:', id);
+
+    const usaha = await ProfileUsaha.findById(id)
+      .populate('id_pengguna', 'nama_lengkap email no_telepon')
+      .populate('id_alamat_usaha');
+    
+    if (!usaha) {
+      return res.status(404).json({ message: 'Profile usaha tidak ditemukan' });
+    }
+
+    console.log('✅ Profile usaha found:', usaha.nama_usaha);
+    res.json(usaha);
+  } catch (err) {
+    console.error('❌ Error in getProfileUsahaById:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET profile usaha by slug (untuk publik)
+export const getProfileUsahaBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    console.log('=== GET PROFILE USAHA BY SLUG ===');
+    console.log('Slug:', slug);
+
+    const usaha = await ProfileUsaha.findOne({ slug })
+      .populate('id_pengguna', 'nama_lengkap email')
+      .populate('id_alamat_usaha');
+    
+    if (!usaha) {
+      return res.status(404).json({ message: 'Usaha tidak ditemukan' });
+    }
+
+    // Hanya tampilkan jika sudah approved
+    if (usaha.status_verifikasi !== 'approved') {
+      return res.status(403).json({ message: 'Usaha belum diverifikasi' });
+    }
+
+    console.log('✅ Profile usaha found');
+    res.json(usaha);
+  } catch (err) {
+    console.error('❌ Error in getProfileUsahaBySlug:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET my usaha (untuk user yang login)
+export const getMyProfileUsaha = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    console.log('=== GET MY PROFILE USAHA ===');
+    console.log('User ID from token:', userId);
+
+    const usaha = await ProfileUsaha.findOne({ id_pengguna: userId })
+      .populate('id_pengguna', 'nama_lengkap email no_telepon')
+      .populate('id_alamat_usaha');
+    
+    if (!usaha) {
+      return res.status(404).json({ message: 'Profile usaha tidak ditemukan' });
+    }
+
+    console.log('✅ Profile usaha found:', usaha.nama_usaha);
+    res.json(usaha);
+  } catch (err) {
+    console.error('❌ Error in getMyProfileUsaha:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// CREATE profile usaha
+export const createProfileUsaha = async (req, res) => {
+  try {
+    console.log('=== CREATE PROFILE USAHA ===');
+    console.log('req.user from token:', req.user);
+    
+    // ✅ Ambil userId dari token JWT (BUKAN dari body!)
+    const userId = req.user.id;
+    console.log('User ID from token:', userId);
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        message: 'Token tidak valid. Harap login kembali.' 
+      });
+    }
+    
+    // Parse data JSON dari FormData
+    let formData;
+    try {
+      formData = JSON.parse(req.body.data);
+    } catch (parseErr) {
+      formData = req.body;
+    }
+    
+    console.log('Parsed formData:', formData);
+
+    // Cek apakah user sudah punya profile usaha
+    const existing = await ProfileUsaha.findOne({ id_pengguna: userId });
+    if (existing) {
+      return res.status(400).json({ 
+        message: 'Anda sudah memiliki profile usaha' 
+      });
+    }
+
+    // Generate slug
+    const slug = generateSlug(formData.nama_usaha);
+    
+    // Cek slug sudah ada atau belum
+    let finalSlug = slug;
+    let counter = 1;
+    while (await ProfileUsaha.findOne({ slug: finalSlug })) {
+      finalSlug = `${slug}-${counter}`;
+      counter++;
+    }
+
+    // ✅ FIX: Handle file upload dengan benar
+    const dataToSave = {
+      ...formData,
+      id_pengguna: userId, // ✅ Gunakan userId dari token
+      slug: finalSlug,
+      status_verifikasi: 'pending'
+    };
+
+    // Logo dari single file upload
+    if (req.files && req.files.logo && req.files.logo[0]) {
+      dataToSave.logo_usaha = req.files.logo[0].path;
+    }
+
+    // Dokumen verifikasi dari multiple files
+    if (req.files && req.files.dokumen) {
+      dataToSave.dokumen_verifikasi = req.files.dokumen.map(f => f.path);
+    }
+
+    const newUsaha = new ProfileUsaha(dataToSave);
+    await newUsaha.save();
+    
+    // Update role pengguna jadi penjual atau keduanya
+    const pengguna = await Pengguna.findById(userId);
+    if (pengguna && pengguna.role === 'pembeli') {
+      pengguna.role = 'penjual';
+      await pengguna.save();
+    }
+
+    const populatedUsaha = await ProfileUsaha.findById(newUsaha._id)
+      .populate('id_pengguna', 'nama_lengkap email no_telepon')
+      .populate('id_alamat_usaha');
+    
+    console.log('✅ Profile usaha created:', populatedUsaha.nama_usaha);
+    res.status(201).json(populatedUsaha);
+  } catch (err) {
+    console.error('❌ Error in createProfileUsaha:', err);
+    res.status(500).json({ 
+      message: 'Gagal membuat profile usaha', 
+      error: err.message 
     });
-    
-    await newProfile.save({ session });
-
-    // 3. Update Role Pengguna menjadi 'penjual' atau 'keduanya'
-    await Pengguna.updateOne(
-      { _id: id_pengguna },
-      { $set: { role: 'penjual' } }, // Atau 'keduanya' jika ada logika tambahan
-      { session }
-    );
-    
-    // 4. Kirim Notifikasi ke Admin (Opsional tapi bagus)
-    // ... (Logika kirim notif ke Admin bahwa ada toko baru) ...
-
-    // Jika semua berhasil
-    await session.commitTransaction();
-    session.endSession();
-    
-    res.status(201).json({ message: 'Pendaftaran usaha berhasil. Menunggu verifikasi admin.', data: newProfile });
-
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    // Tangkap error jika data unique (pengguna/nama_usaha) dilanggar
-    if (error.code === 11000) {
-      if (error.keyPattern.id_pengguna) {
-        return res.status(400).json({ message: 'Anda sudah memiliki profil usaha.' });
-      }
-      if (error.keyPattern.nama_usaha) {
-        return res.status(400).json({ message: 'Nama usaha sudah digunakan.' });
-      }
-    }
-    res.status(500).json({ message: 'Gagal mendaftar usaha', error: error.message });
   }
 };
 
-/**
- * @desc    Mendapatkan profil usaha (milik sendiri)
- * @route   GET /api/usaha/saya
- * @access  Private (Pengguna/Penjual)
- */
-const getMyProfileUsaha = async (req, res) => {
+// UPDATE profile usaha
+export const updateProfileUsaha = async (req, res) => {
   try {
-    const profile = await ProfileUsaha.findOne({ id_pengguna: req.user.id })
-      .populate('alamat_usaha');
+    const { id } = req.params;
+    console.log('=== UPDATE PROFILE USAHA ===');
+    console.log('ID:', id);
+    
+    // ✅ FIX: Parse data JSON dari FormData
+    let formData;
+    try {
+      formData = JSON.parse(req.body.data);
+    } catch (parseErr) {
+      formData = req.body;
+    }
+
+    // Jika update nama usaha, update slug juga
+    if (formData.nama_usaha) {
+      const slug = generateSlug(formData.nama_usaha);
       
-    if (!profile) {
-      return res.status(404).json({ message: 'Anda belum mendaftarkan usaha' });
+      // Cek slug sudah ada atau belum (kecuali milik sendiri)
+      let finalSlug = slug;
+      let counter = 1;
+      while (await ProfileUsaha.findOne({ slug: finalSlug, _id: { $ne: id } })) {
+        finalSlug = `${slug}-${counter}`;
+        counter++;
+      }
+      formData.slug = finalSlug;
     }
-    res.status(200).json(profile);
-  } catch (error) {
-    res.status(500).json({ message: 'Gagal mengambil data usaha', error: error.message });
+
+    // ✅ FIX: Handle file upload dengan benar
+    if (req.files && req.files.logo && req.files.logo[0]) {
+      formData.logo_usaha = req.files.logo[0].path;
+    }
+
+    if (req.files && req.files.dokumen) {
+      formData.dokumen_verifikasi = req.files.dokumen.map(f => f.path);
+    }
+
+    const updated = await ProfileUsaha.findByIdAndUpdate(
+      id, 
+      formData, 
+      { new: true }
+    )
+    .populate('id_pengguna', 'nama_lengkap email no_telepon')
+    .populate('id_alamat_usaha');
+      
+    if (!updated) {
+      return res.status(404).json({ message: 'Profile usaha tidak ditemukan' });
+    }
+    
+    console.log('✅ Profile usaha updated');
+    res.json(updated);
+  } catch (err) {
+    console.error('❌ Error in updateProfileUsaha:', err);
+    res.status(500).json({ message: 'Gagal update profile usaha', error: err.message });
   }
 };
 
-/**
- * @desc    Update profil usaha (milik sendiri)
- * @route   PUT /api/usaha/saya
- * @access  Private (Pengguna/Penjual)
- */
-const updateMyProfileUsaha = async (req, res) => {
+// UPDATE status verifikasi (untuk admin)
+export const updateStatusVerifikasi = async (req, res) => {
   try {
-    const id_pengguna = req.user.id;
-    const { 
-      rating_toko, 
-      jumlah_produk_terjual, 
-      total_transaksi, 
-      status_verifikasi,
-      ...updateData 
-    } = req.body;
-
-    const profile = await ProfileUsaha.findOne({ id_pengguna: id_pengguna });
-    if (!profile) {
-      return res.status(404).json({ message: 'Profil usaha tidak ditemukan' });
-    }
-    
-    // Jika ganti nama, buat slug baru
-    if (updateData.nama_usaha && updateData.nama_usaha !== profile.nama_usaha) {
-      updateData.slug = await generateSlug(updateData.nama_usaha);
-    }
-    
-    // Logika verifikasi ulang jika data sensitif diubah
-    const dataSensitif = ['npwp', 'dokumen_verifikasi'];
-    const diubah = dataSensitif.some(field => updateData[field] !== undefined);
-    
-    if (diubah && profile.status_verifikasi === 'approved') {
-      updateData.status_verifikasi = 'pending'; // Wajib verifikasi ulang
-      updateData.alasan_reject = null;
-    }
-
-    const updatedProfile = await ProfileUsaha.findOneAndUpdate(
-      { id_pengguna: id_pengguna },
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
-    
-    res.status(200).json(updatedProfile);
-  } catch (error) {
-     if (error.code === 11000) {
-        return res.status(400).json({ message: 'Nama usaha sudah digunakan.' });
-     }
-    res.status(500).json({ message: 'Gagal mengupdate usaha', error: error.message });
-  }
-};
-
-
-// --- FUNGSI ADMIN ---
-
-/**
- * @desc    (Admin) Memverifikasi/Update status profil usaha
- * @route   PATCH /api/admin/usaha/:id/status
- * @access  Private (Admin)
- */
-const verifyProfileUsaha = async (req, res) => {
-  try {
-    const { id: id_usaha } = req.params;
+    const { id } = req.params;
     const { status_verifikasi, alasan_reject } = req.body;
+    
+    console.log('=== UPDATE STATUS VERIFIKASI ===');
+    console.log('ID:', id, 'Status:', status_verifikasi);
 
-    if (!['approved', 'rejected'].includes(status_verifikasi)) {
+    if (!['pending', 'approved', 'rejected'].includes(status_verifikasi)) {
       return res.status(400).json({ message: 'Status tidak valid' });
-    }
-    if (status_verifikasi === 'rejected' && !alasan_reject) {
-      return res.status(400).json({ message: 'Alasan reject wajib diisi' });
     }
 
     const updateData = {
       status_verifikasi,
-      alasan_reject: status_verifikasi === 'rejected' ? alasan_reject : null,
       tanggal_verifikasi: new Date()
     };
-    
-    const profile = await ProfileUsaha.findByIdAndUpdate(id_usaha, updateData, { new: true });
-    
-    if (!profile) {
-      return res.status(404).json({ message: 'Profil usaha tidak ditemukan' });
+
+    if (status_verifikasi === 'rejected' && alasan_reject) {
+      updateData.alasan_reject = alasan_reject;
     }
 
-    // Kirim Notifikasi ke Penjual
-    let judul, pesan;
-    if (status_verifikasi === 'approved') {
-      judul = 'Toko Disetujui!';
-      pesan = `Selamat, toko Anda "${profile.nama_usaha}" telah disetujui dan kini aktif di marketplace.`;
-    } else {
-      judul = 'Pendaftaran Toko Ditolak';
-      pesan = `Maaf, pendaftaran toko Anda ditolak. Alasan: ${alasan_reject}`;
+    const updated = await ProfileUsaha.findByIdAndUpdate(
+      id, 
+      updateData, 
+      { new: true }
+    )
+    .populate('id_pengguna', 'nama_lengkap email no_telepon')
+    .populate('id_alamat_usaha');
+    
+    if (!updated) {
+      return res.status(404).json({ message: 'Profile usaha tidak ditemukan' });
     }
     
-    await Notifikasi.create({
-      id_pengguna: profile.id_pengguna,
-      judul: judul,
-      pesan: pesan,
-      tipe: 'sistem',
-      link: '/toko/saya'
-    });
-    
-    res.status(200).json({ message: 'Status verifikasi berhasil diupdate', data: profile });
-  } catch (error) {
-    res.status(500).json({ message: 'Gagal memverifikasi usaha', error: error.message });
+    console.log('✅ Status verifikasi updated');
+    res.json(updated);
+  } catch (err) {
+    console.error('❌ Error in updateStatusVerifikasi:', err);
+    res.status(500).json({ message: 'Gagal update status verifikasi', error: err.message });
   }
 };
 
-
-// --- FUNGSI PUBLIK ---
-
-/**
- * @desc    (Publik) Melihat halaman profil usaha berdasarkan slug
- * @route   GET /api/usaha/by-slug/:slug
- * @access  Public
- */
-const getPublicProfileUsahaBySlug = async (req, res) => {
+// DELETE profile usaha
+export const deleteProfileUsaha = async (req, res) => {
   try {
-    const { slug } = req.params;
-    const profile = await ProfileUsaha.findOne({ 
-      slug: slug, 
-      status_verifikasi: 'approved' // Hanya tampilkan yang sudah disetujui
-    })
-    .populate('alamat_usaha', 'kota provinsi') // Hanya tampilkan info alamat yg relevan
-    .select('-id_pengguna -npwp -dokumen_verifikasi -alasan_reject -email_usaha'); // Sembunyikan data sensitif
+    const { id } = req.params;
+    
+    console.log('=== DELETE PROFILE USAHA ===');
+    console.log('ID:', id);
 
-    if (!profile) {
-      return res.status(404).json({ message: 'Toko tidak ditemukan atau belum diverifikasi' });
+    const deleted = await ProfileUsaha.findByIdAndDelete(id);
+    
+    if (!deleted) {
+      return res.status(404).json({ message: 'Profile usaha tidak ditemukan' });
     }
-    
-    // TODO: Tambah logika untuk mengambil produk milik toko ini
-    // const produkToko = await Produk.find({ id_penjual: profile._id, status: 'aktif' }).limit(10);
-    
-    res.status(200).json({ 
-      toko: profile,
-      // produk: produkToko 
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Gagal mengambil data toko', error: error.message });
-  }
-};
 
-module.exports = {
-  // Rute Penjual
-  createProfileUsaha,
-  getMyProfileUsaha,
-  updateMyProfileUsaha,
-  
-  // Rute Admin
-  verifyProfileUsaha,
-  // ... (perlu fungsi getAllUsahaForAdmin, dll)
-  
-  // Rute Publik
-  getPublicProfileUsahaBySlug
+    // Update role pengguna kembali jadi pembeli
+    await Pengguna.findByIdAndUpdate(
+      deleted.id_pengguna,
+      { role: 'pembeli' }
+    );
+
+    console.log('✅ Profile usaha deleted');
+    res.json({ message: 'Profile usaha berhasil dihapus' });
+  } catch (err) {
+    console.error('❌ Error in deleteProfileUsaha:', err);
+    res.status(500).json({ message: 'Gagal hapus profile usaha', error: err.message });
+  }
 };

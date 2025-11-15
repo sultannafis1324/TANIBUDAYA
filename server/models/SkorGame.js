@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const skorGameSchema = new mongoose.Schema({
   id_pengguna: { 
@@ -28,4 +28,5 @@ const skorGameSchema = new mongoose.Schema({
   level_saat_main: { type: Number, default: 1 } // Level pengguna saat game ini dimainkan
 }, { timestamps: true });
 
-module.exports = mongoose.model('SkorGame', skorGameSchema);
+// Menggunakan 'export default' untuk ES Modules
+export default mongoose.model('SkorGame', skorGameSchema);

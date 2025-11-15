@@ -1,7 +1,7 @@
-const SkorGame = require('../models/SkorGame.js');
-const Pengguna = require('../models/Pengguna.js'); // Untuk leaderboard
-const Quiz = require('../models/Quiz.js'); // Untuk validasi skor
-const mongoose = require('mongoose');
+import SkorGame from '../models/SkorGame.js';
+import Pengguna from '../models/Pengguna.js'; // Untuk leaderboard & update poin
+import Quiz from '../models/Quiz.js'; // Untuk validasi skor
+import mongoose from 'mongoose';
 
 // --- FUNGSI PENGGUNA ---
 
@@ -10,12 +10,12 @@ const mongoose = require('mongoose');
  * @route   POST /api/game/submit
  * @access  Private (Pengguna)
  */
-const submitGameSession = async (req, res) => {
+export const submitGameSession = async (req, res) => {
   try {
     const id_pengguna = req.user.id;
     // Frontend mengirim hasil sesi game
     const { 
-      level, 
+      level_saat_main, 
       waktu_selesai, 
       answers, // Array: [{ id_pertanyaan: "...", jawaban_teks: "..." }]
       tingkat_kesulitan, // Data konteks dari model baru
@@ -54,7 +54,7 @@ const submitGameSession = async (req, res) => {
       total_soal,
       jawaban_benar,
       waktu_selesai: waktu_selesai || 0,
-      level_saat_main: level || 1,
+      level_saat_main: level_saat_main || 1,
       tingkat_kesulitan, // Simpan konteks
       kategori_budaya: kategori_budaya || null // Simpan konteks
     });
@@ -65,6 +65,7 @@ const submitGameSession = async (req, res) => {
     if (skor_didapat > 0) {
       await Pengguna.findByIdAndUpdate(id_pengguna, {
         $inc: { poin_game: skor_didapat }
+        // Anda juga bisa tambahkan logika update 'level_user' di sini
       });
     }
 
@@ -83,7 +84,7 @@ const submitGameSession = async (req, res) => {
  * @route   GET /api/game/history
  * @access  Private (Pengguna)
  */
-const getMyGameHistory = async (req, res) => {
+export const getMyGameHistory = async (req, res) => {
   try {
     const id_pengguna = req.user.id;
     const { page = 1, limit = 10 } = req.query;
@@ -119,7 +120,7 @@ const getMyGameHistory = async (req, res) => {
  * @route   GET /api/game/leaderboard/total
  * @access  Public
  */
-const getLeaderboardTotal = async (req, res) => {
+export const getLeaderboardTotal = async (req, res) => {
   try {
     // Ini mengambil dari model Pengguna (yang poinnya di-update server-side)
     const topUsers = await Pengguna.find({ status_akun: 'aktif' })
@@ -138,10 +139,14 @@ const getLeaderboardTotal = async (req, res) => {
  * @route   GET /api/game/leaderboard/session
  * @access  Public
  */
-const getLeaderboardSession = async (req, res) => {
+export const getLeaderboardSession = async (req, res) => {
   try {
+    const { kategori } = req.query; // Filter by ?kategori=...
+    let filter = {};
+    if (kategori) filter.kategori_budaya = kategori;
+
     // Ini mengambil dari model SkorGame (sesi game individu)
-    const topSessions = await SkorGame.find({})
+    const topSessions = await SkorGame.find(filter)
       .sort({ skor: -1 }) // Sort Skor Sesi Tertinggi
       .limit(20)
       .populate('id_pengguna', 'nama_lengkap foto_profil')
@@ -151,12 +156,4 @@ const getLeaderboardSession = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Gagal mengambil leaderboard sesi', error: error.message });
   }
-};
-
-
-module.exports = {
-  submitGameSession,
-  getMyGameHistory,
-  getLeaderboardTotal,
-  getLeaderboardSession
 };

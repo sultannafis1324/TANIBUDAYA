@@ -1,5 +1,3 @@
-// controllers/PromosiProdukController.js (Contoh nama file)
-
 import PromosiProduk from '../models/PromosiProduk.js'; // Sesuaikan path jika perlu
 import mongoose from 'mongoose';
 
@@ -8,7 +6,7 @@ import mongoose from 'mongoose';
 
 /**
  * @desc    (Admin) Menambahkan/mendaftarkan produk ke promosi
- * @route   POST /api/admin/promo-produk
+ * @route   POST /api/promo-produk
  * @access  Private (Admin)
  */
 export const addProdukToPromo = async (req, res) => {
@@ -40,7 +38,7 @@ export const addProdukToPromo = async (req, res) => {
 
 /**
  * @desc    (Admin) Menghapus produk dari promosi
- * @route   DELETE /api/admin/promo-produk/:id
+ * @route   DELETE /api/promo-produk/:id
  * @access  Private (Admin)
  */
 export const removeProdukFromPromo = async (req, res) => {
@@ -61,7 +59,7 @@ export const removeProdukFromPromo = async (req, res) => {
 
 /**
  * @desc    (Admin) Melihat semua produk dalam satu promosi
- * @route   GET /api/admin/promosi/:id_promo/produk
+ * @route   GET /api/promo-produk/by-promo/:id_promo
  * @access  Private (Admin)
  */
 export const getProdukByPromo = async (req, res) => {
@@ -81,7 +79,7 @@ export const getProdukByPromo = async (req, res) => {
 
 /**
  * @desc    (Admin) Melihat semua promosi yang diikuti satu produk
- * @route   GET /api/admin/produk/:id_produk/promosi
+ * @route   GET /api/promo-produk/by-produk/:id_produk
  * @access  Private (Admin)
  */
 export const getPromoByProduk = async (req, res) => {
@@ -98,5 +96,3 @@ export const getPromoByProduk = async (req, res) => {
     res.status(500).json({ message: 'Gagal mengambil data promosi', error: error.message });
   }
 };
-
-// Tidak perlu 'module.exports' lagi karena kita sudah 'export' di setiap fungsi

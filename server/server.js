@@ -16,7 +16,19 @@ import alamatRoutes from "./routes/alamatRoutes.js";
 import profileUsahaRoutes from "./routes/profileUsahaRoutes.js";
 import keranjangRoutes from "./routes/keranjangRoutes.js";
 import pesananRoutes from "./routes/pesananRoutes.js"; // 🆕
-import paymentRoutes from "./routes/paymentRoutes.js"; // 🆕
+import paymentRoutes from "./routes/paymentRoutes.js";// 🆕
+
+
+import laporanRoutes from "./routes/laporanRoutes.js";
+import promosiRoutes from "./routes/promosiRoutes.js";
+import promosiProdukRoutes from "./routes/promosiProdukRoutes.js";
+import provinsiRoutes from "./routes/provinsiRoutes.js";
+import quizRoutes from "./routes/quizRoutes.js";
+import riwayatChatRoutes from "./routes/riwayatChatRoutes.js";
+import skorGameRoutes from "./routes/skorGameRoutes.js";
+import ulasanRoutes from "./routes/ulasanRoutes.js";
+import wishlistRoutes from "./routes/wishlistRoutes.js";
+
 
 // Import cron jobs
 import { startCronJobs } from "./utils/cronJobs.js"; // 🆕

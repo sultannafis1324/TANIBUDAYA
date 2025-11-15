@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 const promosiSchema = new mongoose.Schema({
   kode_promo: { type: String, required: true, unique: true },
   nama_promo: { type: String, required: true },
@@ -22,4 +24,5 @@ const promosiSchema = new mongoose.Schema({
   status: { type: String, enum: ['aktif', 'nonaktif', 'expired'], default: 'aktif' }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Promosi', promosiSchema);
+// Menggunakan 'export default' untuk ES Modules
+export default mongoose.model('Promosi', promosiSchema);

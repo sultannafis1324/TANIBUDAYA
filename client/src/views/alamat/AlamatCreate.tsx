@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Layout from '../../components/Layout';
 
 interface Province {
   id: string;
@@ -161,7 +160,6 @@ const AlamatCreate: React.FC = () => {
   };
 
   return (
-    <Layout>
       <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
         <h1>Tambah Alamat Baru</h1>
         
@@ -337,7 +335,6 @@ const AlamatCreate: React.FC = () => {
           </div>
         </form>
       </div>
-    </Layout>
   );
 };
 

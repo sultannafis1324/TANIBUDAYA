@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Layout from '../../components/Layout';
 
 const ProfileUsaha: React.FC = () => {
   const navigate = useNavigate();
@@ -119,7 +118,6 @@ const ProfileUsaha: React.FC = () => {
   };
 
   return (
-    <Layout>
       <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
         <h1>{hasUsaha ? 'Edit Profile Usaha' : 'Daftar Usaha Baru'}</h1>
         
@@ -281,7 +279,6 @@ const ProfileUsaha: React.FC = () => {
           </div>
         </form>
       </div>
-    </Layout>
   );
 };
 

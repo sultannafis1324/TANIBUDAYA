@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Layout from '../../components/Layout';
 
 interface Konten {
   _id: string;
@@ -138,7 +137,6 @@ const KontenBudayaList: React.FC = () => {
   }
 
   return (
-    <Layout>
     <div style={{ padding: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1>{isAdmin ? 'Kelola Konten Budaya' : 'Konten Budaya Saya'}</h1>
@@ -366,7 +364,6 @@ const KontenBudayaList: React.FC = () => {
         </div>
       )}
     </div>
-    </Layout>
   );
 };
 

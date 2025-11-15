@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Layout from '../../components/Layout';
 
 interface Kategori {
   _id: string;
@@ -113,7 +112,6 @@ const ProdukCreate: React.FC = () => {
   };
 
   return (
-    <Layout>
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-8">
           <h1 className="text-3xl font-bold mb-6">Tambah Produk Baru</h1>
@@ -236,7 +234,6 @@ const ProdukCreate: React.FC = () => {
           </form>
         </div>
       </div>
-    </Layout>
   );
 };
 

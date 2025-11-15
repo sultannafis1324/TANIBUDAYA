@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Layout from '../../components/Layout';
 
 interface Alamat {
   _id: string;
@@ -81,14 +80,11 @@ const AlamatList: React.FC = () => {
 
   if (loading) {
     return (
-      <Layout>
         <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
           <h1>Daftar Alamat</h1>
@@ -237,7 +233,6 @@ const AlamatList: React.FC = () => {
           </div>
         )}
       </div>
-    </Layout>
   );
 };
 

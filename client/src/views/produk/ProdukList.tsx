@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Layout from '../../components/Layout';
 
 interface MediaItem {
   url: string;
@@ -61,7 +60,6 @@ const ProdukList: React.FC = () => {
   if (loading) return <div className="p-8 text-center">Loading...</div>;
 
   return (
-    <Layout>
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-6">
@@ -165,7 +163,6 @@ const ProdukList: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 

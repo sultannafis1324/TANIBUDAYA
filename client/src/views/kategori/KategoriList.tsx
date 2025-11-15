@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import Layout from "../../components/Layout";
 
 interface Kategori {
   _id: string;
@@ -88,7 +87,6 @@ const KategoriList: React.FC = () => {
   if (loading) return <p>Loading...</p>;
 
   return (
-    <Layout>
       <div className="p-6">
         <h1 className="text-2xl font-bold mb-4">Kategori</h1>
 
@@ -224,7 +222,6 @@ const KategoriList: React.FC = () => {
           </tbody>
         </table>
       </div>
-    </Layout>
   );
 };
 

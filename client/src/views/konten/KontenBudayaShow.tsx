@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import Layout from '../../components/Layout';
 
 interface Konten {
   _id: string;
@@ -104,7 +103,6 @@ const KontenBudayaShow: React.FC = () => {
   }
 
   return (
-    <Layout>
     <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
       {/* Header */}
       <div style={{ marginBottom: '20px' }}>
@@ -315,7 +313,6 @@ const KontenBudayaShow: React.FC = () => {
         </div>
       )}
     </div>
-    </Layout>
   );
 };
 

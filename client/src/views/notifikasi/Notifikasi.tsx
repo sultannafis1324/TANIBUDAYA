@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import Layout from "../../components/Layout";
 
 interface Notifikasi {
   _id: string;
@@ -38,7 +37,6 @@ const Notifikasi = () => {
   if (loading) return <p style={{ textAlign: "center" }}>Loading...</p>;
 
   return (
-    <Layout>
     <div style={{ maxWidth: 700, margin: "0 auto", padding: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h2>Notifikasi</h2>
@@ -68,7 +66,6 @@ const Notifikasi = () => {
         </ul>
       )}
     </div>
-    </Layout>
   );
 };
 

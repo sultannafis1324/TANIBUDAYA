@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Layout from '../../components/Layout';
 
 interface Pengguna {
   _id: string;
@@ -77,19 +76,15 @@ const Profile: React.FC = () => {
 
   if (loading) {
     return (
-      <Layout>
         <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>
-      </Layout>
     );
   }
 
   if (!pengguna) {
     return (
-      <Layout>
         <div style={{ padding: '20px', textAlign: 'center' }}>
           <p>Profil tidak ditemukan</p>
         </div>
-      </Layout>
     );
   }
 
@@ -112,7 +107,6 @@ const Profile: React.FC = () => {
   };
 
   return (
-    <Layout>
       <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
         {/* Header Profile */}
         <div style={{ 
@@ -352,7 +346,6 @@ const Profile: React.FC = () => {
           )}
         </div>
       </div>
-    </Layout>
   );
 };
 

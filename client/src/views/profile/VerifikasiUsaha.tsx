@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Layout from '../../components/Layout';
 
 const VerifikasiUsaha: React.FC = () => {
   const [usahaList, setUsahaList] = useState<any[]>([]);
@@ -45,7 +44,6 @@ const VerifikasiUsaha: React.FC = () => {
   };
 
   return (
-    <Layout>
       <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
         <h1>Verifikasi Usaha</h1>
 
@@ -97,7 +95,6 @@ const VerifikasiUsaha: React.FC = () => {
           </div>
         )}
       </div>
-    </Layout>
   );
 };
 

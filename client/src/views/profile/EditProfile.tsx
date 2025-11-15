@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Layout from '../../components/Layout';
 
 const EditProfile: React.FC = () => {
   const navigate = useNavigate();
@@ -99,14 +98,11 @@ const EditProfile: React.FC = () => {
 
   if (loadingData) {
     return (
-      <Layout>
         <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
         <h1>Edit Profil</h1>
         
@@ -258,7 +254,6 @@ const EditProfile: React.FC = () => {
           </p>
         </div>
       </div>
-    </Layout>
   );
 };
 

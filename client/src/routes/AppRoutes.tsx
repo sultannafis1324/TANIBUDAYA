@@ -1,6 +1,6 @@
-// src/App.tsx
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import Layout from "../components/Layout";
 
 // Auth pages
 import UniversalLogin from "../views/auth/Login";
@@ -39,7 +39,12 @@ import KontenBudayaShow from "../views/konten/KontenBudayaShow";
 import KontenBudayaPublik from "../views/konten/KontenBudayaPublik";
 
 // PrivateRoute dengan role check
-const PrivateRoute: React.FC<{ children: JSX.Element; role: "admin" | "pengguna" }> = ({ children, role }) => {
+interface PrivateRouteProps {
+  children: React.ReactElement;
+  role: "admin" | "pengguna";
+}
+
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, role }) => {
   const token = localStorage.getItem("token");
   const userType = localStorage.getItem("userType");
 
@@ -50,178 +55,235 @@ const PrivateRoute: React.FC<{ children: JSX.Element; role: "admin" | "pengguna"
 };
 
 // Authenticated route untuk semua user login
-const AuthenticatedRoute: React.FC<{ children: JSX.Element }> = ({ children }) => {
+interface AuthenticatedRouteProps {
+  children: React.ReactElement;
+}
+
+const AuthenticatedRoute: React.FC<AuthenticatedRouteProps> = ({ children }) => {
   const token = localStorage.getItem("token");
   if (!token) return <Navigate to="/login" replace />;
   return children;
 };
 
-const App: React.FC = () => {
+const AppRoutes: React.FC = () => {
   return (
     <Router>
       <Routes>
-        {/* ===== AUTH ===== */}
+        {/* ===== AUTH (tanpa Layout/Navbar) ===== */}
         <Route path="/login" element={<UniversalLogin />} />
         <Route path="/register-pengguna" element={<RegisterPengguna />} />
         <Route path="/register-admin" element={<RegisterAdmin />} />
 
-        {/* ===== MARKETPLACE (Public) ===== */}
+        {/* ===== MARKETPLACE & BUDAYA PUBLIC (dengan Layout) ===== */}
         <Route path="/marketplace" element={<Marketplace />} />
-        <Route path="/produk/:slug" element={<ProdukShow />} />
+        <Route
+          path="/produk/:slug"
+          element={
+            <Layout>
+              <ProdukShow />
+            </Layout>
+          }
+        />
+        <Route
+          path="/budaya"
+          element={
+            <Layout>
+              <KontenBudayaPublik />
+            </Layout>
+          }
+        />
+        <Route
+          path="/budaya/:id"
+          element={
+            <Layout>
+              <KontenBudayaShow />
+            </Layout>
+          }
+        />
 
-        {/* ===== ADMIN ===== */}
+        {/* ===== ADMIN ROUTES ===== */}
         <Route
           path="/admin/list"
           element={
-            <PrivateRoute role="admin">
-              <AdminList />
-            </PrivateRoute>
+            <Layout>
+              <PrivateRoute role="admin">
+                <AdminList />
+              </PrivateRoute>
+            </Layout>
           }
         />
         <Route
-          path="/kategori/list"
+          path="/admin/kategori/list"
           element={
-            <PrivateRoute role="admin">
-              <KategoriList />
-            </PrivateRoute>
+            <Layout>
+              <PrivateRoute role="admin">
+                <KategoriList />
+              </PrivateRoute>
+            </Layout>
           }
         />
         <Route
-          path="/pengguna/list"
+          path="/admin/pengguna/list"
           element={
-            <PrivateRoute role="admin">
-              <PenggunaList />
-            </PrivateRoute>
+            <Layout>
+              <PrivateRoute role="admin">
+                <PenggunaList />
+              </PrivateRoute>
+            </Layout>
+          }
+        />
+        <Route
+          path="/admin/profile-usaha/verifikasi"
+          element={
+            <Layout>
+              <PrivateRoute role="admin">
+                <VerifikasiUsaha />
+              </PrivateRoute>
+            </Layout>
           }
         />
 
-        {/* ===== PENGGUNA / PENJUAL ===== */}
+        {/* ===== PENGGUNA ROUTES - Profile ===== */}
         <Route
           path="/profile"
           element={
-            <PrivateRoute role="pengguna">
-              <Profile />
-            </PrivateRoute>
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <Profile />
+              </PrivateRoute>
+            </Layout>
           }
         />
         <Route
           path="/profile/edit"
           element={
-            <PrivateRoute role="pengguna">
-              <EditProfile />
-            </PrivateRoute>
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <EditProfile />
+              </PrivateRoute>
+            </Layout>
           }
         />
-
-        {/* 🔥 GANTI: dari /usaha → /profile-usaha */}
         <Route
           path="/profile-usaha"
           element={
-            <PrivateRoute role="pengguna">
-              <ProfileUsaha />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/profile-usaha/verifikasi"
-          element={
-            <PrivateRoute role="admin">
-              <VerifikasiUsaha />
-            </PrivateRoute>
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <ProfileUsaha />
+              </PrivateRoute>
+            </Layout>
           }
         />
 
-        {/* Alamat */}
+        {/* ===== PENGGUNA ROUTES - Alamat ===== */}
         <Route
           path="/alamat"
           element={
-            <PrivateRoute role="pengguna">
-              <AlamatList />
-            </PrivateRoute>
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <AlamatList />
+              </PrivateRoute>
+            </Layout>
           }
         />
         <Route
           path="/alamat/create"
           element={
-            <PrivateRoute role="pengguna">
-              <AlamatCreate />
-            </PrivateRoute>
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <AlamatCreate />
+              </PrivateRoute>
+            </Layout>
           }
         />
         <Route
           path="/alamat/edit/:id"
           element={
-            <PrivateRoute role="pengguna">
-              <AlamatEdit />
-            </PrivateRoute>
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <AlamatEdit />
+              </PrivateRoute>
+            </Layout>
           }
         />
 
-        {/* Notifikasi */}
+        {/* ===== PENGGUNA ROUTES - Notifikasi ===== */}
         <Route
           path="/notifikasi"
           element={
-            <PrivateRoute role="pengguna">
-              <Notifikasi />
-            </PrivateRoute>
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <Notifikasi />
+              </PrivateRoute>
+            </Layout>
           }
         />
 
-        {/* Produk */}
+        {/* ===== PENGGUNA ROUTES - Produk ===== */}
         <Route
           path="/produk/list"
           element={
-            <PrivateRoute role="pengguna">
-              <ProdukList />
-            </PrivateRoute>
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <ProdukList />
+              </PrivateRoute>
+            </Layout>
           }
         />
         <Route
           path="/produk/create"
           element={
-            <PrivateRoute role="pengguna">
-              <ProdukCreate />
-            </PrivateRoute>
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <ProdukCreate />
+              </PrivateRoute>
+            </Layout>
           }
         />
         <Route
           path="/produk/edit/:id"
           element={
-            <PrivateRoute role="pengguna">
-              <ProdukEdit />
-            </PrivateRoute>
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <ProdukEdit />
+              </PrivateRoute>
+            </Layout>
           }
         />
 
-        {/* Konten Budaya */}
-        <Route path="/budaya" element={<KontenBudayaPublik />} />
-        <Route path="/budaya/:id" element={<KontenBudayaShow />} />
+        {/* ===== KONTEN BUDAYA - Authenticated ===== */}
         <Route
           path="/konten-budaya"
           element={
-            <AuthenticatedRoute>
-              <KontenBudayaList />
-            </AuthenticatedRoute>
+            <Layout>
+              <AuthenticatedRoute>
+                <KontenBudayaList />
+              </AuthenticatedRoute>
+            </Layout>
           }
         />
         <Route
           path="/konten-budaya/create"
           element={
-            <AuthenticatedRoute>
-              <KontenBudayaCreate />
-            </AuthenticatedRoute>
+            <Layout>
+              <AuthenticatedRoute>
+                <KontenBudayaCreate />
+              </AuthenticatedRoute>
+            </Layout>
           }
         />
         <Route
           path="/konten-budaya/edit/:id"
           element={
-            <AuthenticatedRoute>
-              <KontenBudayaEdit />
-            </AuthenticatedRoute>
+            <Layout>
+              <AuthenticatedRoute>
+                <KontenBudayaEdit />
+              </AuthenticatedRoute>
+            </Layout>
           }
         />
 
-        {/* ===== DEFAULT ===== */}
+        {/* ===== DEFAULT REDIRECT ===== */}
         <Route path="/" element={<Navigate to="/marketplace" replace />} />
         <Route path="*" element={<Navigate to="/marketplace" replace />} />
       </Routes>
@@ -229,4 +291,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+export default AppRoutes;

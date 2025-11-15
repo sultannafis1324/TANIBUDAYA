@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import Layout from '../../components/Layout';
 
 interface Province {
   id: string;
@@ -197,14 +196,11 @@ const AlamatEdit: React.FC = () => {
 
   if (loadingData) {
     return (
-      <Layout>
         <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
         <h1>Edit Alamat</h1>
         
@@ -380,7 +376,6 @@ const AlamatEdit: React.FC = () => {
           </div>
         </form>
       </div>
-    </Layout>
   );
 };
 

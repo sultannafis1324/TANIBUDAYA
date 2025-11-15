@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 const laporanSchema = new mongoose.Schema({
   pelapor: { type: mongoose.Schema.Types.ObjectId, ref: 'Pengguna', required: true },
   terlapor: { type: mongoose.Schema.Types.ObjectId, ref: 'Pengguna', required: true },
@@ -11,4 +13,5 @@ const laporanSchema = new mongoose.Schema({
   ditangani_oleh: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Laporan', laporanSchema);
+// Menggunakan 'export default' untuk ES Modules
+export default mongoose.model('Laporan', laporanSchema);

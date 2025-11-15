@@ -1,49 +1,37 @@
-// routes/promosiProdukRoutes.js
 import express from 'express';
 
-// Impor middleware otentikasi
-import { verifyToken, isAdmin } from '../middleware/authMiddleware.js';
-
-// Impor fungsi controller yang baru Anda buat
+// 1. Impor controller
 import {
   addProdukToPromo,
   removeProdukFromPromo,
   getProdukByPromo,
   getPromoByProduk
-} from '../controllers/PromosiProdukController.js'; // Sesuaikan path jika perlu
+} from '../controller/PromosiProdukController.js';
 
+// 2. Impor middleware "satpam"
+import { authAdmin } from '../middleware/authAdmin.js'; // Pastikan path ini benar
+
+// 3. Inisialisasi router
 const router = express.Router();
 
-// -----------------------------------------------------------------
-// 🔒 Semua rute di file ini dilindungi (Admin Only)
-// -----------------------------------------------------------------
-// Kita terapkan middleware di sini agar berlaku untuk semua rute di bawah
-router.use(verifyToken, isAdmin);
+// --- Rute Khusus Admin ---
+// Di server.js, ini akan dipanggil sebagai '/api/promo-produk'
 
+// @desc    (Admin) Menambahkan/mendaftarkan produk ke promosi
+// @route   POST /api/promo-produk
+router.post('/', authAdmin, addProdukToPromo);
 
-/**
- * @desc    Menambahkan produk ke promosi
- * @route   POST /api/admin/promo-produk
- */
-router.post('/promo-produk', addProdukToPromo);
+// @desc    (Admin) Menghapus produk dari promosi (berdasarkan ID link)
+// @route   DELETE /api/promo-produk/:id
+router.delete('/:id', authAdmin, removeProdukFromPromo);
 
-/**
- * @desc    Menghapus produk dari promosi (berdasarkan ID link)
- * @route   DELETE /api/admin/promo-produk/:id
- */
-router.delete('/promo-produk/:id', removeProdukFromPromo);
+// @desc    (Admin) Melihat semua produk dalam satu promosi
+// @route   GET /api/promo-produk/by-promo/:id_promo
+router.get('/by-promo/:id_promo', authAdmin, getProdukByPromo);
 
-/**
- * @desc    Melihat semua produk dalam satu promosi
- * @route   GET /api/admin/promosi/:id_promo/produk
- */
-router.get('/promosi/:id_promo/produk', getProdukByPromo);
-
-/**
- * @desc    Melihat semua promosi yang diikuti satu produk
- * @route   GET /api/admin/produk/:id_produk/promosi
- */
-router.get('/produk/:id_produk/promosi', getPromoByProduk);
+// @desc    (Admin) Melihat semua promosi yang diikuti satu produk
+// @route   GET /api/promo-produk/by-produk/:id_produk
+router.get('/by-produk/:id_produk', authAdmin, getPromoByProduk);
 
 
 export default router;

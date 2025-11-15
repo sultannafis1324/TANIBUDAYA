@@ -1,16 +1,16 @@
-const Provinsi = require('../models/Provinsi.js'); // Sesuaikan path jika perlu
-const mongoose = require('mongoose');
+import Provinsi from '../models/Provinsi.js'; // Sesuaikan path jika perlu
+import mongoose from 'mongoose';
 
 // --- 1. FUNGSI PUBLIK (Read-Only) ---
 
 /**
- * @desc    Mendapatkan semua data provinsi
+ * @desc    Mendapatkan semua data provinsi (diurutkan A-Z)
  * @route   GET /api/provinsi
  * @access  Public
  */
-const getAllProvinsi = async (req, res) => {
+export const getAllProvinsi = async (req, res) => {
   try {
-    // Selalu urutkan berdasarkan nama A-Z
+    // Selalu urutkan berdasarkan nama A-Z untuk dropdown
     const provinsiList = await Provinsi.find({}).sort({ nama_provinsi: 1 });
     res.status(200).json(provinsiList);
   } catch (error) {
@@ -23,7 +23,7 @@ const getAllProvinsi = async (req, res) => {
  * @route   GET /api/provinsi/:id
  * @access  Public
  */
-const getProvinsiById = async (req, res) => {
+export const getProvinsiById = async (req, res) => {
   try {
     const provinsi = await Provinsi.findById(req.params.id);
     
@@ -45,10 +45,10 @@ const getProvinsiById = async (req, res) => {
 
 /**
  * @desc    (Admin) Menambahkan provinsi baru
- * @route   POST /api/admin/provinsi
+ * @route   POST /api/provinsi/admin
  * @access  Private (Admin)
  */
-const createProvinsi = async (req, res) => {
+export const createProvinsi = async (req, res) => {
   try {
     const { nama_provinsi, kode_provinsi } = req.body;
 
@@ -82,10 +82,10 @@ const createProvinsi = async (req, res) => {
 
 /**
  * @desc    (Admin) Update data provinsi
- * @route   PUT /api/admin/provinsi/:id
+ * @route   PUT /api/provinsi/admin/:id
  * @access  Private (Admin)
  */
-const updateProvinsi = async (req, res) => {
+export const updateProvinsi = async (req, res) => {
   try {
     const { id } = req.params;
     const { nama_provinsi, kode_provinsi } = req.body;
@@ -121,17 +121,15 @@ const updateProvinsi = async (req, res) => {
 
 /**
  * @desc    (Admin) Menghapus provinsi
- * @route   DELETE /api/admin/provinsi/:id
+ * @route   DELETE /api/provinsi/admin/:id
  * @access  Private (Admin)
  */
-const deleteProvinsi = async (req, res) => {
+export const deleteProvinsi = async (req, res) => {
   try {
     // --- PERINGATAN PENTING ---
     // Menghapus provinsi (hard delete) dapat merusak data lain
-    // (Produk, KontenBudaya, Alamat) yang me-referensi ID ini.
-    //
-    // CARA LEBIH AMAN: Tambahkan field 'status' di model Provinsi
-    // dan update statusnya menjadi 'nonaktif' (soft delete).
+    // (Produk, Alamat, KontenBudaya) yang me-referensi ID ini.
+    // Pertimbangkan untuk 'soft delete' (menambah field status).
     
     const deleted = await Provinsi.findByIdAndDelete(req.params.id);
     
@@ -143,14 +141,4 @@ const deleteProvinsi = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Gagal menghapus provinsi', error: error.message });
   }
-};
-
-module.exports = {
-  // Rute Publik
-  getAllProvinsi,
-  getProvinsiById,
-  // Rute Admin
-  createProvinsi,
-  updateProvinsi,
-  deleteProvinsi
 };

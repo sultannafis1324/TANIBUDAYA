@@ -1,16 +1,16 @@
-const Quiz = require('../models/Quiz.js'); // Sesuaikan path
-const Pengguna = require('../models/Pengguna.js'); // Untuk update poin
-const mongoose = require('mongoose');
+import Quiz from '../models/Quiz.js'; // Sesuaikan path
+import Pengguna from '../models/Pengguna.js'; // Dibutuhkan untuk update poin
+import mongoose from 'mongoose';
 
 // --- 1. FUNGSI ADMIN (CRUD) ---
 // (Semua rute ini harus dilindungi oleh middleware auth Admin)
 
 /**
  * @desc    (Admin) Membuat pertanyaan kuis baru
- * @route   POST /api/admin/quiz
+ * @route   POST /api/quiz/admin
  * @access  Private (Admin)
  */
-const createQuiz = async (req, res) => {
+export const createQuiz = async (req, res) => {
   try {
     const { pertanyaan, opsi_jawaban, ...data } = req.body;
 
@@ -40,10 +40,10 @@ const createQuiz = async (req, res) => {
 
 /**
  * @desc    (Admin) Mendapatkan semua kuis (termasuk nonaktif)
- * @route   GET /api/admin/quiz
+ * @route   GET /api/quiz/admin
  * @access  Private (Admin)
  */
-const getAllQuizForAdmin = async (req, res) => {
+export const getAllQuizForAdmin = async (req, res) => {
   try {
     const quizzes = await Quiz.find({})
       .populate('kategori_budaya', 'nama_kategori')
@@ -56,10 +56,10 @@ const getAllQuizForAdmin = async (req, res) => {
 
 /**
  * @desc    (Admin) Update kuis
- * @route   PUT /api/admin/quiz/:id
+ * @route   PUT /api/quiz/admin/:id
  * @access  Private (Admin)
  */
-const updateQuiz = async (req, res) => {
+export const updateQuiz = async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -87,10 +87,10 @@ const updateQuiz = async (req, res) => {
 
 /**
  * @desc    (Admin) Menghapus kuis (Soft Delete)
- * @route   DELETE /api/admin/quiz/:id
+ * @route   DELETE /api/quiz/admin/:id
  * @access  Private (Admin)
  */
-const deleteQuiz = async (req, res) => {
+export const deleteQuiz = async (req, res) => {
   try {
     // Gunakan soft delete (nonaktifkan) agar tidak merusak data
     const deleted = await Quiz.findByIdAndUpdate(
@@ -116,7 +116,7 @@ const deleteQuiz = async (req, res) => {
  * @route   GET /api/quiz/play
  * @access  Private (Pengguna)
  */
-const getQuizBatch = async (req, res) => {
+export const getQuizBatch = async (req, res) => {
   try {
     const { kesulitan, kategori, limit = 10 } = req.query;
     
@@ -138,6 +138,7 @@ const getQuizBatch = async (req, res) => {
       kategori_budaya: q.kategori_budaya,
       tingkat_kesulitan: q.tingkat_kesulitan,
       opsi_jawaban: q.opsi_jawaban.map(opt => ({
+        _id: opt._id,
         teks: opt.teks // HANYA kirim teks jawaban
         // 'is_correct' TIDAK DIKIRIM
       })),
@@ -151,11 +152,11 @@ const getQuizBatch = async (req, res) => {
 };
 
 /**
- * @desc    (Pengguna) Mensubmit jawaban kuis
+ * @desc    (Pengguna) Mensubmit jawaban kuis (untuk 1 soal)
  * @route   POST /api/quiz/submit
  * @access  Private (Pengguna)
  */
-const submitQuizAnswer = async (req, res) => {
+export const submitQuizAnswer = async (req, res) => {
   try {
     const id_pengguna = req.user.id;
     const { id_pertanyaan, jawaban_teks } = req.body;
@@ -201,22 +202,10 @@ const submitQuizAnswer = async (req, res) => {
         is_correct: false,
         penjelasan: question.penjelasan,
         poin_didapat: 0,
-        jawaban_benar: correctOption.teks // Beri tahu jawaban yang benar
+        jawaban_benar: correctOption ? correctOption.teks : 'N/A' // Beri tahu jawaban yang benar
       });
     }
   } catch (error) {
     res.status(500).json({ message: 'Gagal memproses jawaban', error: error.message });
   }
-};
-
-
-module.exports = {
-  // Rute Admin
-  createQuiz,
-  getAllQuizForAdmin,
-  updateQuiz,
-  deleteQuiz,
-  // Rute Pengguna
-  getQuizBatch,
-  submitQuizAnswer
 };

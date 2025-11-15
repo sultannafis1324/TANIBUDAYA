@@ -1,7 +1,7 @@
-const Wishlist = require('../models/Wishlist.js');
-const Produk = require('../models/Produk.js'); 
-const KontenBudaya = require('../models/KontenBudaya.js');
-const mongoose = require('mongoose');
+import Wishlist from '../models/Wishlist.js';
+import Produk from '../models/Produk.js'; // Dibutuhkan untuk populate
+import KontenBudaya from '../models/KontenBudaya.js'; // Dibutuhkan untuk populate
+import mongoose from 'mongoose';
 
 // --- FUNGSI PENGGUNA ---
 // (Semua rute ini harus dilindungi middleware auth Pengguna)
@@ -11,7 +11,7 @@ const mongoose = require('mongoose');
  * @route   POST /api/wishlist
  * @access  Private (Pengguna)
  */
-const addToWishlist = async (req, res) => {
+export const addToWishlist = async (req, res) => {
   try {
     const id_pengguna = req.user.id;
     const { id_item, tipe_item, catatan } = req.body;
@@ -52,7 +52,7 @@ const addToWishlist = async (req, res) => {
  * @route   DELETE /api/wishlist/:id_item
  * @access  Private (Pengguna)
  */
-const removeFromWishlist = async (req, res) => {
+export const removeFromWishlist = async (req, res) => {
   try {
     const id_pengguna = req.user.id;
     const { id_item } = req.params; // ID Produk atau KontenBudaya
@@ -77,7 +77,7 @@ const removeFromWishlist = async (req, res) => {
  * @route   GET /api/wishlist
  * @access  Private (Pengguna)
  */
-const getMyWishlist = async (req, res) => {
+export const getMyWishlist = async (req, res) => {
   try {
     const id_pengguna = req.user.id;
     const { tipe } = req.query; // Filter ?tipe=produk atau ?tipe=budaya
@@ -105,9 +105,9 @@ const getMyWishlist = async (req, res) => {
     // 2. Ambil data detailnya secara paralel
     const [produks, budayas] = await Promise.all([
       Produk.find({ _id: { $in: produkIds } })
-            .select('nama_produk slug media harga status'), // Sesuaikan field yg perlu
+            .select('nama_produk slug media harga status'), // Hanya ambil data yg perlu
       KontenBudaya.find({ _id: { $in: budayaIds } })
-                    .select('judul media status') // Sesuaikan field yg perlu
+                    .select('judul slug media status') // Hanya ambil data yg perlu
     ]);
 
     // 3. "Jahit" (Stitch) data kembali
@@ -142,7 +142,7 @@ const getMyWishlist = async (req, res) => {
  * @route   GET /api/wishlist/check/:id_item
  * @access  Private (Pengguna)
  */
-const checkWishlistStatus = async (req, res) => {
+export const checkWishlistStatus = async (req, res) => {
   try {
     const id_pengguna = req.user.id;
     const { id_item } = req.params;
@@ -160,11 +160,4 @@ const checkWishlistStatus = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Gagal mengecek status wishlist', error: error.message });
   }
-};
-
-module.exports = {
-  addToWishlist,
-  removeFromWishlist,
-  getMyWishlist,
-  checkWishlistStatus
 };

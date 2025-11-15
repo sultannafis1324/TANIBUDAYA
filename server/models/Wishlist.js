@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 const wishlistSchema = new mongoose.Schema({
   id_pengguna: { type: mongoose.Schema.Types.ObjectId, ref: 'Pengguna', required: true },
   tipe_item: { type: String, enum: ['produk', 'budaya'], required: true },
@@ -5,4 +7,5 @@ const wishlistSchema = new mongoose.Schema({
   catatan: { type: String }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Wishlist', wishlistSchema);
+// Menggunakan 'export default' untuk ES Modules
+export default mongoose.model('Wishlist', wishlistSchema);

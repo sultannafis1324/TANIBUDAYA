@@ -1,7 +1,7 @@
-const Ulasan = require('../models/Ulasan.js');
-const Produk = require('../models/Produk.js');
-const KontenBudaya = require('../models/KontenBudaya.js');
-const mongoose = require('mongoose');
+import Ulasan from '../models/Ulasan.js';
+import Produk from '../models/Produk.js';
+import KontenBudaya from '../models/KontenBudaya.js';
+import mongoose from 'mongoose';
 
 // --- HELPER FUNCTION (SANGAT PENTING) ---
 /**
@@ -49,6 +49,7 @@ const recalculateRating = async (tipe, id_item) => {
         jumlah_ulasan: newCount
       });
     } else if (tipe === 'budaya') {
+      // Pastikan model KontenBudaya punya field 'rating_konten' & 'jumlah_ulasan'
       await KontenBudaya.findByIdAndUpdate(id, {
         rating_konten: newRating,
         jumlah_ulasan: newCount
@@ -68,7 +69,7 @@ const recalculateRating = async (tipe, id_item) => {
  * @route   POST /api/ulasan
  * @access  Private (Pengguna)
  */
-const createUlasan = async (req, res) => {
+export const createUlasan = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   
@@ -95,8 +96,9 @@ const createUlasan = async (req, res) => {
       filter = { id_produk: id_produk };
       id_item = id_produk;
       
-      // TODO: Validasi apakah pengguna sudah membeli produk ini
-      // (Cek model 'Pesanan' -> 'selesai')
+      // TODO (PENTING): Tambahkan validasi di sini
+      // Cek apakah 'id_pengguna' sudah pernah membeli 'id_produk'
+      // dari model 'Pesanan' yang statusnya 'selesai'.
     } else {
       if (!id_konten_budaya) throw new Error('ID Konten Budaya wajib diisi');
       filter = { id_konten_budaya: id_konten_budaya };
@@ -123,14 +125,10 @@ const createUlasan = async (req, res) => {
     
     await newUlasan.save({ session });
     
-    // 2. Hitung ulang rating (di dalam transaksi)
-    //    Kita panggil helper di luar transaksi (setelah commit)
-    //    agar tidak membebani transaksi.
-    
     await session.commitTransaction();
     session.endSession();
 
-    // 3. Panggil helper recalculate SETELAH transaksi sukses
+    // 2. Panggil helper recalculate SETELAH transaksi sukses
     await recalculateRating(tipe_ulasan, id_item);
 
     res.status(201).json(newUlasan);
@@ -147,7 +145,7 @@ const createUlasan = async (req, res) => {
  * @route   GET /api/ulasan
  * @access  Public
  */
-const getUlasanForItem = async (req, res) => {
+export const getUlasanForItem = async (req, res) => {
   try {
     const { id_produk, id_konten_budaya } = req.query;
     let filter = {};
@@ -162,6 +160,7 @@ const getUlasanForItem = async (req, res) => {
 
     const ulasanList = await Ulasan.find(filter)
       .populate('id_pengguna', 'nama_lengkap foto_profil') // Tampilkan info pengulas
+      .populate('id_pembalas', 'nama_lengkap foto_profil') // Tampilkan info pembalas
       .sort({ createdAt: -1 });
       
     res.status(200).json(ulasanList);
@@ -175,12 +174,15 @@ const getUlasanForItem = async (req, res) => {
  * @route   POST /api/ulasan/:id/reply
  * @access  Private (Penjual)
  */
-const replyToUlasan = async (req, res) => {
+export const replyToUlasan = async (req, res) => {
   try {
     const { id: id_ulasan } = req.params;
     const { balasan } = req.body;
-    const id_penjual_profil = req.profileUsaha.id; // Didapat dari middleware auth penjual
-    const id_pengguna_pembalas = req.profileUsaha.id_pengguna; // ID Pengguna milik Penjual
+    
+    // Didapat dari middleware authPenjual
+    const id_penjual_profil = req.profileUsaha._id; 
+    // ID Pengguna milik Penjual (yang membalas)
+    const id_pengguna_pembalas = req.user.id; 
 
     if (!balasan) {
       return res.status(400).json({ message: 'Balasan tidak boleh kosong' });
@@ -192,8 +194,8 @@ const replyToUlasan = async (req, res) => {
     }
     
     // Validasi: Hanya penjual produk tsb yang boleh balas
-    if (ulasan.tipe_ulasan !== 'produk' || ulasan.id_penjual.toString() !== id_penjual_profil) {
-      return res.status(403).json({ message: 'Akses ditolak' });
+    if (ulasan.tipe_ulasan !== 'produk' || ulasan.id_penjual.toString() !== id_penjual_profil.toString()) {
+      return res.status(403).json({ message: 'Akses ditolak. Anda bukan penjual dari produk ini.' });
     }
     
     ulasan.balasan = balasan;
@@ -210,10 +212,10 @@ const replyToUlasan = async (req, res) => {
 
 /**
  * @desc    (Admin) Menghapus ulasan (Moderasi)
- * @route   DELETE /api/admin/ulasan/:id
+ * @route   DELETE /api/ulasan/admin/:id
  * @access  Private (Admin)
  */
-const deleteUlasan = async (req, res) => {
+export const deleteUlasan = async (req, res) => {
   try {
     const { id: id_ulasan } = req.params;
 
@@ -237,12 +239,4 @@ const deleteUlasan = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Gagal menghapus ulasan', error: error.message });
   }
-};
-
-module.exports = {
-  createUlasan,
-  getUlasanForItem,
-  replyToUlasan,
-  deleteUlasan
-  // Anda bisa tambahkan updateUlasan jika pengguna boleh mengedit
 };

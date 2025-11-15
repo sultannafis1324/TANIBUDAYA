@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 const provinsiSchema = new mongoose.Schema({
   nama_provinsi: { type: String, required: true },
   kode_provinsi: { type: String },
@@ -10,4 +12,5 @@ const provinsiSchema = new mongoose.Schema({
   gambar_peta: { type: String }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Provinsi', provinsiSchema);
+// Menggunakan 'export default' untuk ES Modules
+export default mongoose.model('Provinsi', provinsiSchema);

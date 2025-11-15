@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 const quizSchema = new mongoose.Schema({
   pertanyaan: { type: String, required: true },
   kategori_budaya: { type: mongoose.Schema.Types.ObjectId, ref: 'Kategori' },
@@ -12,4 +14,5 @@ const quizSchema = new mongoose.Schema({
   status: { type: String, enum: ['aktif', 'nonaktif'], default: 'aktif' }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Quiz', quizSchema);
+// Menggunakan 'export default' untuk ES Modules
+export default mongoose.model('Quiz', quizSchema);

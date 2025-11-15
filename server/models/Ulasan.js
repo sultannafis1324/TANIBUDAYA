@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 const ulasanSchema = new mongoose.Schema({
   tipe_ulasan: { type: String, enum: ['produk', 'budaya'], required: true },
   
@@ -23,4 +25,5 @@ const ulasanSchema = new mongoose.Schema({
   is_reported: { type: Boolean, default: false }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Ulasan', ulasanSchema);
+// Menggunakan 'export default' untuk ES Modules
+export default mongoose.model('Ulasan', ulasanSchema);

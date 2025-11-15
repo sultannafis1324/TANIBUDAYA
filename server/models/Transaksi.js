@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 const transaksiSchema = new mongoose.Schema({
   id_pengguna: { type: mongoose.Schema.Types.ObjectId, ref: 'Pengguna', required: true },
   id_pesanan: { type: mongoose.Schema.Types.ObjectId, ref: 'Pesanan', required: true },
@@ -9,4 +11,5 @@ const transaksiSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'success', 'failed'], default: 'pending' }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Transaksi', transaksiSchema);
+// Menggunakan 'export default' untuk ES Modules
+export default mongoose.model('Transaksi', transaksiSchema);

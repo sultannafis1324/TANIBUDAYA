@@ -1,4 +1,3 @@
-// server.js
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -13,8 +12,14 @@ import produkRoutes from "./routes/produkRoutes.js";
 import notifikasiRoutes from "./routes/notifikasiRoutes.js";
 import MarketplaceRoute from "./routes/MarketplaceRoute.js";
 import kontenBudayaRoutes from "./routes/kontenBudaya.js";
-import alamatRoutes from "./routes/alamatRoutes.js"; // 🆕 alamat
-import profileUsahaRoutes from "./routes/profileUsahaRoutes.js"; // 🆕 pengganti usaha
+import alamatRoutes from "./routes/alamatRoutes.js";
+import profileUsahaRoutes from "./routes/profileUsahaRoutes.js";
+import keranjangRoutes from "./routes/keranjangRoutes.js";
+import pesananRoutes from "./routes/pesananRoutes.js"; // 🆕
+import paymentRoutes from "./routes/paymentRoutes.js"; // 🆕
+
+// Import cron jobs
+import { startCronJobs } from "./utils/cronJobs.js"; // 🆕
 
 dotenv.config();
 const app = express();
@@ -39,7 +44,14 @@ app.use("/api/alamat", alamatRoutes);
 // Kategori, Produk, dan Profile Usaha
 app.use("/api/kategori", kategoriRoutes);
 app.use("/api/produk", produkRoutes);
-app.use("/api/profile-usaha", profileUsahaRoutes); // ✅ ganti route usaha ke profile-usaha
+app.use("/api/profile-usaha", profileUsahaRoutes);
+
+// Keranjang
+app.use("/api/keranjang", keranjangRoutes);
+
+// Pesanan & Payment 🆕
+app.use("/api/pesanan", pesananRoutes);
+app.use("/api/payment", paymentRoutes);
 
 // Notifikasi & Marketplace
 app.use("/api/notifikasi", notifikasiRoutes);
@@ -51,7 +63,12 @@ app.use("/api/konten-budaya", kontenBudayaRoutes);
 // ====== DATABASE ======
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Connected"))
+  .then(() => {
+    console.log("✅ MongoDB Connected");
+    
+    // 🆕 Start cron jobs setelah DB connect
+    startCronJobs();
+  })
   .catch((err) => console.error("❌ MongoDB Error:", err));
 
 // ====== START SERVER ======

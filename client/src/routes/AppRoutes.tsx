@@ -31,6 +31,16 @@ import ProdukList from "../views/produk/ProdukList";
 import ProdukCreate from "../views/produk/ProdukCreate";
 import ProdukEdit from "../views/produk/ProdukEdit";
 
+// Keranjang
+import KeranjangList from "../views/keranjang/KeranjangList";
+
+// Pesanan
+import PesananList from "../views/pesanan/PesananList";
+import DetailPesanan from "../views/pesanan/DetailPesanan";
+import CreatePesanan from "../views/pesanan/CreatePesanan";
+import KelolaPesanan from "../views/pesanan/KelolaPesanan";
+
+
 // Konten Budaya
 import KontenBudayaList from "../views/konten/KontenBudayaList";
 import KontenBudayaCreate from "../views/konten/KontenBudayaCreate";
@@ -202,6 +212,60 @@ const AppRoutes: React.FC = () => {
             <Layout>
               <PrivateRoute role="pengguna">
                 <AlamatEdit />
+              </PrivateRoute>
+            </Layout>
+          }
+        />
+
+        {/* ===== PENGGUNA ROUTES - Keranjang ===== */}
+        <Route
+          path="/keranjang"
+          element={
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <KeranjangList />
+              </PrivateRoute>
+            </Layout>
+          }
+        />
+
+        {/* ===== PENGGUNA ROUTES - Pesanan ===== */}
+        <Route
+          path="/pesanan"
+          element={
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <PesananList />
+              </PrivateRoute>
+            </Layout>
+          }
+        />
+        <Route
+          path="/pesanan/:id"
+          element={
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <DetailPesanan />
+              </PrivateRoute>
+            </Layout>
+          }
+        />
+        <Route
+          path="/pesanan/kelola"
+          element={
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <KelolaPesanan />
+              </PrivateRoute>
+            </Layout>
+          }
+        />
+        <Route
+          path="/checkout"
+          element={
+            <Layout>
+              <PrivateRoute role="pengguna">
+                <CreatePesanan />
               </PrivateRoute>
             </Layout>
           }

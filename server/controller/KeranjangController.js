@@ -1,223 +1,319 @@
-const Keranjang = require('../models/Keranjang.js'); // Sesuaikan path
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
+import Keranjang from "../models/Keranjang.js";
+import Produk from "../models/Produk.js";
 
-// --- CATATAN PENTING ---
-// Semua fungsi di controller ini berasumsi Anda memiliki
-// middleware otentikasi (cek JWT) yang menempatkan
-// ID pengguna yang login ke `req.user.id`.
+// Helper function untuk mendapatkan keranjang dengan detail produk
+const getKeranjangWithDetails = async (userId) => {
+  const items = await Keranjang.find({ id_pengguna: userId })
+    .populate({
+      path: "id_produk",
+      select: "nama_produk harga stok media status slug id_penjual", // ✅ Tambah id_penjual
+    })
+    .populate({
+      path: "id_penjual",
+      select: "nama_usaha foto_profil",
+    })
+    .sort({ createdAt: -1 })
+    .lean();
 
-/**
- * @desc    Menambahkan item ke keranjang (atau update jumlah jika sudah ada)
- * @route   POST /api/keranjang
- * @access  Private (Pengguna ybs)
- */
-const addItemToKeranjang = async (req, res) => {
-  try {
-    const id_pengguna = req.user.id;
-    const { id_produk, id_penjual, jumlah } = req.body;
-    const qty = parseInt(jumlah) || 1;
-
-    if (!id_produk || !id_penjual) {
-      return res.status(400).json({ message: 'ID Produk dan ID Penjual wajib diisi' });
+  // Group by penjual (seperti Shopee)
+  const groupedByPenjual = items.reduce((acc, item) => {
+    const penjualId = item.id_penjual._id.toString();
+    
+    if (!acc[penjualId]) {
+      acc[penjualId] = {
+        id_penjual: item.id_penjual._id,
+        nama_usaha: item.id_penjual.nama_usaha,
+        foto_profil: item.id_penjual.foto_profil,
+        items: [],
+      };
     }
-
-    // 1. Cek apakah item sudah ada di keranjang pengguna
-    let itemKeranjang = await Keranjang.findOne({
-      id_pengguna: id_pengguna,
-      id_produk: id_produk
+    
+    // ✅ HITUNG SUBTOTAL untuk setiap item
+    const subtotal = (item.id_produk?.harga || 0) * item.jumlah;
+    
+    acc[penjualId].items.push({
+      ...item,
+      subtotal // ✅ Tambahkan subtotal
     });
+    return acc;
+  }, {});
 
-    if (itemKeranjang) {
-      // 2. Jika SUDAH ADA: Update jumlah (quantity)
-      itemKeranjang.jumlah += qty;
-      await itemKeranjang.save();
-      res.status(200).json({ message: 'Jumlah item di keranjang diupdate', item: itemKeranjang });
-    } else {
-      // 3. Jika BELUM ADA: Buat item keranjang baru
-      const newItem = new Keranjang({
-        id_pengguna,
-        id_produk,
-        id_penjual,
-        jumlah: qty,
-        checked: true // Otomatis tercentang saat ditambah
-      });
-      await newItem.save();
-      res.status(201).json({ message: 'Item ditambahkan ke keranjang', item: newItem });
-    }
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
+  return Object.values(groupedByPenjual);
+};
+
+// GET semua keranjang user (dikelompokkan per penjual)
+export const getKeranjang = async (req, res) => {
+  try {
+    const grouped = await getKeranjangWithDetails(req.user.id);
+    res.json(grouped);
+  } catch (err) {
+    console.error("Error get keranjang:", err);
+    res.status(500).json({ message: "Gagal mengambil keranjang", error: err.message });
   }
 };
 
-/**
- * @desc    Mendapatkan semua item keranjang milik pengguna
- * @route   GET /api/keranjang
- * @access  Private (Pengguna ybs)
- */
-const getKeranjang = async (req, res) => {
+// ADD produk ke keranjang
+export const addToKeranjang = async (req, res) => {
   try {
-    const id_pengguna = req.user.id;
+    const { id_produk, jumlah = 1 } = req.body;
 
-    // Ambil semua item, populate data produk dan penjual
-    const items = await Keranjang.find({ id_pengguna: id_pengguna })
-      .populate({
-        path: 'id_produk',
-        select: 'nama_produk harga gambar_produk slug stok' // Ambil field yg relevan
-      })
-      .populate({
-        path: 'id_penjual',
-        select: 'nama_usaha domisili' // Ambil field yg relevan
-      })
-      .sort({ createdAt: -1 });
+    if (!id_produk) {
+      return res.status(400).json({ message: "ID produk harus diisi" });
+    }
 
-    // --- Logika Grouping berdasarkan Penjual ---
-    // Ini mengubah [item1, item2, item3]
-    // menjadi:
-    // [
-    //   { penjual: {...}, items: [item1, item2] },
-    //   { penjual: {...}, items: [item3] }
-    // ]
-    
-    const grouped = new Map();
+    // Validasi produk
+    const produk = await Produk.findById(id_produk);
+    if (!produk) {
+      return res.status(404).json({ message: "Produk tidak ditemukan" });
+    }
 
-    items.forEach(item => {
-      // Jika produk atau penjualnya sudah terhapus, lewati
-      if (!item.id_produk || !item.id_penjual) {
-        return;
-      }
+    if (produk.status !== "aktif") {
+      return res.status(400).json({ message: "Produk tidak tersedia" });
+    }
+
+    if (produk.stok < jumlah) {
+      return res.status(400).json({ message: "Stok tidak mencukupi" });
+    }
+
+    // Cek apakah produk sudah ada di keranjang
+    let keranjangItem = await Keranjang.findOne({
+      id_pengguna: req.user.id,
+      id_produk: id_produk,
+    });
+
+    if (keranjangItem) {
+      // Update jumlah jika sudah ada
+      const newJumlah = keranjangItem.jumlah + jumlah;
       
-      const sellerId = item.id_penjual._id.toString();
-
-      if (!grouped.has(sellerId)) {
-        grouped.set(sellerId, {
-          penjual: item.id_penjual,
-          items: []
-        });
+      if (newJumlah > produk.stok) {
+        return res.status(400).json({ message: "Jumlah melebihi stok tersedia" });
       }
-      grouped.get(sellerId).items.push(item);
+
+      keranjangItem.jumlah = newJumlah;
+      keranjangItem.checked = true;
+      await keranjangItem.save();
+
+      return res.json({ 
+        message: "Jumlah produk di keranjang diperbarui", 
+        data: keranjangItem 
+      });
+    }
+
+    // Tambah item baru
+    keranjangItem = new Keranjang({
+      id_pengguna: req.user.id,
+      id_produk: id_produk,
+      id_penjual: produk.id_penjual,
+      jumlah: jumlah,
+      checked: true,
     });
 
-    const groupedResult = Array.from(grouped.values());
+    await keranjangItem.save();
 
-    res.status(200).json(groupedResult);
-
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
+    res.status(201).json({ 
+      message: "Produk berhasil ditambahkan ke keranjang", 
+      data: keranjangItem 
+    });
+  } catch (err) {
+    console.error("Error add to keranjang:", err);
+    res.status(500).json({ message: "Gagal menambahkan ke keranjang", error: err.message });
   }
 };
 
-/**
- * @desc    Update jumlah item di keranjang
- * @route   PUT /api/keranjang/:id
- * @access  Private (Pengguna ybs)
- */
-const updateItemQuantity = async (req, res) => {
+// UPDATE jumlah produk di keranjang
+export const updateJumlahKeranjang = async (req, res) => {
   try {
-    const id_pengguna = req.user.id;
-    const { id: id_item_keranjang } = req.params;
+    const { id } = req.params;
     const { jumlah } = req.body;
-    
-    const qty = parseInt(jumlah);
-    
-    // Kuantitas minimal 1
-    if (!qty || qty < 1) {
-      return res.status(400).json({ message: 'Jumlah minimal 1' });
+
+    if (!jumlah || jumlah < 1) {
+      return res.status(400).json({ message: "Jumlah harus minimal 1" });
     }
 
-    // Cari dan update, sekaligus cek kepemilikan
-    const updatedItem = await Keranjang.findOneAndUpdate(
-      { _id: id_item_keranjang, id_pengguna: id_pengguna },
-      { jumlah: qty },
-      { new: true }
-    );
-
-    if (!updatedItem) {
-      return res.status(404).json({ message: 'Item keranjang tidak ditemukan atau Anda tidak punya akses' });
-    }
-
-    res.status(200).json(updatedItem);
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
-  }
-};
-
-/**
- * @desc    Update status checked (centang) item
- * @route   PATCH /api/keranjang/:id/toggle
- * @access  Private (Pengguna ybs)
- */
-const toggleItemChecked = async (req, res) => {
-  try {
-    const id_pengguna = req.user.id;
-    const { id: id_item_keranjang } = req.params;
-    const { checked } = req.body; // Kirim { "checked": true } atau { "checked": false }
-
-    if (typeof checked !== 'boolean') {
-      return res.status(400).json({ message: 'Status "checked" (boolean) wajib diisi' });
-    }
-    
-    const updatedItem = await Keranjang.findOneAndUpdate(
-      { _id: id_item_keranjang, id_pengguna: id_pengguna },
-      { checked: checked },
-      { new: true }
-    );
-
-    if (!updatedItem) {
-      return res.status(404).json({ message: 'Item keranjang tidak ditemukan' });
-    }
-    
-    res.status(200).json(updatedItem);
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
-  }
-};
-
-/**
- * @desc    Menghapus item dari keranjang
- * @route   DELETE /api/keranjang/:id
- * @access  Private (Pengguna ybs)
- */
-const deleteItemFromKeranjang = async (req, res) => {
-  try {
-    const id_pengguna = req.user.id;
-    const { id: id_item_keranjang } = req.params;
-
-    // Cari dan hapus, sekaligus cek kepemilikan
-    const deletedItem = await Keranjang.findOneAndDelete({
-      _id: id_item_keranjang,
-      id_pengguna: id_pengguna
+    const keranjangItem = await Keranjang.findOne({
+      _id: id,
+      id_pengguna: req.user.id,
     });
 
-    if (!deletedItem) {
-      return res.status(404).json({ message: 'Item keranjang tidak ditemukan atau Anda tidak punya akses' });
+    if (!keranjangItem) {
+      return res.status(404).json({ message: "Item keranjang tidak ditemukan" });
     }
 
-    res.status(200).json({ message: 'Item berhasil dihapus dari keranjang' });
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
+    // Validasi stok
+    const produk = await Produk.findById(keranjangItem.id_produk);
+    if (!produk) {
+      return res.status(404).json({ message: "Produk tidak ditemukan" });
+    }
+
+    if (jumlah > produk.stok) {
+      return res.status(400).json({ message: "Jumlah melebihi stok tersedia" });
+    }
+
+    keranjangItem.jumlah = jumlah;
+    await keranjangItem.save();
+
+    res.json({ 
+      message: "Jumlah berhasil diperbarui", 
+      data: keranjangItem 
+    });
+  } catch (err) {
+    console.error("Error update jumlah:", err);
+    res.status(500).json({ message: "Gagal update jumlah", error: err.message });
   }
 };
 
-/**
- * @desc    Mendapatkan jumlah item di keranjang (untuk ikon notifikasi)
- * @route   GET /api/keranjang/count
- * @access  Private (Pengguna ybs)
- */
-const getKeranjangCount = async (req, res) => {
-   try {
-    const id_pengguna = req.user.id;
-    const count = await Keranjang.countDocuments({ id_pengguna: id_pengguna });
-    res.status(200).json({ count });
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
+// TOGGLE checkbox item (untuk pilih produk yang akan di-checkout)
+export const toggleCheckKeranjang = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const keranjangItem = await Keranjang.findOne({
+      _id: id,
+      id_pengguna: req.user.id,
+    });
+
+    if (!keranjangItem) {
+      return res.status(404).json({ message: "Item keranjang tidak ditemukan" });
+    }
+
+    keranjangItem.checked = !keranjangItem.checked;
+    await keranjangItem.save();
+
+    res.json({ 
+      message: "Status checked berhasil diubah", 
+      data: keranjangItem 
+    });
+  } catch (err) {
+    console.error("Error toggle check:", err);
+    res.status(500).json({ message: "Gagal toggle check", error: err.message });
   }
 };
 
-module.exports = {
-  addItemToKeranjang,
-  getKeranjang,
-  updateItemQuantity,
-  toggleItemChecked,
-  deleteItemFromKeranjang,
-  getKeranjangCount
+// TOGGLE ALL checkbox per penjual
+export const toggleCheckAllPenjual = async (req, res) => {
+  try {
+    const { id_penjual } = req.body;
+
+    if (!id_penjual) {
+      return res.status(400).json({ message: "ID penjual harus diisi" });
+    }
+
+    const items = await Keranjang.find({
+      id_pengguna: req.user.id,
+      id_penjual: id_penjual,
+    });
+
+    if (items.length === 0) {
+      return res.status(404).json({ message: "Tidak ada item dari penjual ini" });
+    }
+
+    // Cek apakah semua sudah checked
+    const allChecked = items.every(item => item.checked);
+    const newStatus = !allChecked;
+
+    // Update semua item penjual
+    await Keranjang.updateMany(
+      { 
+        id_pengguna: req.user.id, 
+        id_penjual: id_penjual 
+      },
+      { checked: newStatus }
+    );
+
+    res.json({ 
+      message: `Semua item ${newStatus ? 'dipilih' : 'dibatalkan'}`, 
+      checked: newStatus 
+    });
+  } catch (err) {
+    console.error("Error toggle all penjual:", err);
+    res.status(500).json({ message: "Gagal toggle semua item", error: err.message });
+  }
+};
+
+// DELETE item dari keranjang
+export const deleteKeranjangItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const keranjangItem = await Keranjang.findOneAndDelete({
+      _id: id,
+      id_pengguna: req.user.id,
+    });
+
+    if (!keranjangItem) {
+      return res.status(404).json({ message: "Item keranjang tidak ditemukan" });
+    }
+
+    res.json({ message: "Item berhasil dihapus dari keranjang" });
+  } catch (err) {
+    console.error("Error delete keranjang:", err);
+    res.status(500).json({ message: "Gagal menghapus item", error: err.message });
+  }
+};
+
+// DELETE multiple items (berdasarkan array ID)
+export const deleteMultipleKeranjang = async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: "Array ID harus diisi" });
+    }
+
+    const result = await Keranjang.deleteMany({
+      _id: { $in: ids },
+      id_pengguna: req.user.id,
+    });
+
+    res.json({ 
+      message: `${result.deletedCount} item berhasil dihapus`,
+      deletedCount: result.deletedCount
+    });
+  } catch (err) {
+    console.error("Error delete multiple:", err);
+    res.status(500).json({ message: "Gagal menghapus item", error: err.message });
+  }
+};
+
+// GET total item & harga yang di-check (untuk summary checkout)
+export const getKeranjangSummary = async (req, res) => {
+  try {
+    const items = await Keranjang.find({
+      id_pengguna: req.user.id,
+      checked: true,
+    }).populate("id_produk", "harga");
+
+    const totalItems = items.reduce((sum, item) => sum + item.jumlah, 0);
+    
+    // ✅ FIX: Hitung totalHarga dengan benar
+    const totalHarga = items.reduce((sum, item) => {
+      const harga = item.id_produk?.harga || 0;
+      return sum + (harga * item.jumlah);
+    }, 0);
+
+    res.json({
+      totalItems,
+      totalHarga,
+      jumlahProduk: items.length,
+    });
+  } catch (err) {
+    console.error("Error get summary:", err);
+    res.status(500).json({ message: "Gagal mengambil summary", error: err.message });
+  }
+};
+
+// CLEAR semua keranjang user
+export const clearKeranjang = async (req, res) => {
+  try {
+    const result = await Keranjang.deleteMany({ id_pengguna: req.user.id });
+    
+    res.json({ 
+      message: "Keranjang berhasil dikosongkan",
+      deletedCount: result.deletedCount
+    });
+  } catch (err) {
+    console.error("Error clear keranjang:", err);
+    res.status(500).json({ message: "Gagal mengosongkan keranjang", error: err.message });
+  }
 };

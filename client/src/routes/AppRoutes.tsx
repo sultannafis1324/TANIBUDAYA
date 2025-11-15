@@ -1,6 +1,7 @@
-// src/App.tsx
+// src/routes/AppRoutes.tsx
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import AppLayout from "../layout/AppLayout";
 
 // Auth pages
 import UniversalLogin from "../views/auth/Login";
@@ -56,11 +57,11 @@ const AuthenticatedRoute: React.FC<{ children: JSX.Element }> = ({ children }) =
   return children;
 };
 
-const App: React.FC = () => {
+const AppRoutes: React.FC = () => {
   return (
     <Router>
       <Routes>
-        {/* ===== AUTH ===== */}
+        {/* ===== AUTH (tanpa sidebar) ===== */}
         <Route path="/login" element={<UniversalLogin />} />
         <Route path="/register-pengguna" element={<RegisterPengguna />} />
         <Route path="/register-admin" element={<RegisterAdmin />} />
@@ -69,157 +70,110 @@ const App: React.FC = () => {
         <Route path="/marketplace" element={<Marketplace />} />
         <Route path="/produk/:slug" element={<ProdukShow />} />
 
-        {/* ===== ADMIN ===== */}
+        {/* ===== ADMIN (pakai AppLayout) ===== */}
         <Route
-          path="/admin/list"
+          path="/admin/*"
           element={
             <PrivateRoute role="admin">
-              <AdminList />
+              <AppLayout>
+                <Outlet />
+              </AppLayout>
             </PrivateRoute>
           }
-        />
-        <Route
-          path="/kategori/list"
-          element={
-            <PrivateRoute role="admin">
-              <KategoriList />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/pengguna/list"
-          element={
-            <PrivateRoute role="admin">
-              <PenggunaList />
-            </PrivateRoute>
-          }
-        />
+        >
+          <Route path="list" element={<AdminList />} />
+          <Route path="kategori/list" element={<KategoriList />} />
+          <Route path="pengguna/list" element={<PenggunaList />} />
+          <Route path="profile-usaha/verifikasi" element={<VerifikasiUsaha />} />
+        </Route>
 
-        {/* ===== PENGGUNA / PENJUAL ===== */}
+        {/* ===== PENGGUNA / PENJUAL (pakai AppLayout) ===== */}
         <Route
-          path="/profile"
+          path="/profile/*"
           element={
             <PrivateRoute role="pengguna">
-              <Profile />
+              <AppLayout>
+                <Outlet />
+              </AppLayout>
             </PrivateRoute>
           }
-        />
-        <Route
-          path="/profile/edit"
-          element={
-            <PrivateRoute role="pengguna">
-              <EditProfile />
-            </PrivateRoute>
-          }
-        />
+        >
+          <Route index element={<Profile />} />
+          <Route path="edit" element={<EditProfile />} />
+        </Route>
 
-        {/* 🔥 GANTI: dari /usaha → /profile-usaha */}
         <Route
           path="/profile-usaha"
           element={
             <PrivateRoute role="pengguna">
-              <ProfileUsaha />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/profile-usaha/verifikasi"
-          element={
-            <PrivateRoute role="admin">
-              <VerifikasiUsaha />
+              <AppLayout>
+                <ProfileUsaha />
+              </AppLayout>
             </PrivateRoute>
           }
         />
 
         {/* Alamat */}
         <Route
-          path="/alamat"
+          path="/alamat/*"
           element={
             <PrivateRoute role="pengguna">
-              <AlamatList />
+              <AppLayout>
+                <Outlet />
+              </AppLayout>
             </PrivateRoute>
           }
-        />
-        <Route
-          path="/alamat/create"
-          element={
-            <PrivateRoute role="pengguna">
-              <AlamatCreate />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/alamat/edit/:id"
-          element={
-            <PrivateRoute role="pengguna">
-              <AlamatEdit />
-            </PrivateRoute>
-          }
-        />
+        >
+          <Route index element={<AlamatList />} />
+          <Route path="create" element={<AlamatCreate />} />
+          <Route path="edit/:id" element={<AlamatEdit />} />
+        </Route>
 
         {/* Notifikasi */}
         <Route
           path="/notifikasi"
           element={
             <PrivateRoute role="pengguna">
-              <Notifikasi />
+              <AppLayout>
+                <Notifikasi />
+              </AppLayout>
             </PrivateRoute>
           }
         />
 
         {/* Produk */}
         <Route
-          path="/produk/list"
+          path="/produk/*"
           element={
             <PrivateRoute role="pengguna">
-              <ProdukList />
+              <AppLayout>
+                <Outlet />
+              </AppLayout>
             </PrivateRoute>
           }
-        />
-        <Route
-          path="/produk/create"
-          element={
-            <PrivateRoute role="pengguna">
-              <ProdukCreate />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/produk/edit/:id"
-          element={
-            <PrivateRoute role="pengguna">
-              <ProdukEdit />
-            </PrivateRoute>
-          }
-        />
+        >
+          <Route path="list" element={<ProdukList />} />
+          <Route path="create" element={<ProdukCreate />} />
+          <Route path="edit/:id" element={<ProdukEdit />} />
+        </Route>
 
         {/* Konten Budaya */}
         <Route path="/budaya" element={<KontenBudayaPublik />} />
         <Route path="/budaya/:id" element={<KontenBudayaShow />} />
         <Route
-          path="/konten-budaya"
+          path="/konten-budaya/*"
           element={
             <AuthenticatedRoute>
-              <KontenBudayaList />
+              <AppLayout>
+                <Outlet />
+              </AppLayout>
             </AuthenticatedRoute>
           }
-        />
-        <Route
-          path="/konten-budaya/create"
-          element={
-            <AuthenticatedRoute>
-              <KontenBudayaCreate />
-            </AuthenticatedRoute>
-          }
-        />
-        <Route
-          path="/konten-budaya/edit/:id"
-          element={
-            <AuthenticatedRoute>
-              <KontenBudayaEdit />
-            </AuthenticatedRoute>
-          }
-        />
+        >
+          <Route index element={<KontenBudayaList />} />
+          <Route path="create" element={<KontenBudayaCreate />} />
+          <Route path="edit/:id" element={<KontenBudayaEdit />} />
+        </Route>
 
         {/* ===== DEFAULT ===== */}
         <Route path="/" element={<Navigate to="/marketplace" replace />} />
@@ -229,4 +183,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+export default AppRoutes;

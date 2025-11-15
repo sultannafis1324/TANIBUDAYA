@@ -1,60 +1,67 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ThemeToggleButton } from "./common/ThemeToggleButton";
 import NotificationDropdown from "./header/NotificationDropdown";
 import UserDropdown from "./header/UserDropdown";
+import axios from "axios";
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [cartCount, setCartCount] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Get user info from localStorage
   const token = localStorage.getItem("token");
   const userType = localStorage.getItem("userType");
 
+  useEffect(() => {
+    if (token && userType === "pengguna") {
+      fetchCartCount();
+    }
+  }, [token, userType, location.pathname]);
+
+  const fetchCartCount = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/keranjang/summary", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCartCount(res.data.totalItems || 0);
+    } catch (error) {
+      console.error("Error fetching cart count:", error);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.clear();
-    navigate("/login");
+    navigate("/marketplace");
   };
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
-        event.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
 
   const isActive = (path: string) => location.pathname === path;
-
-  const toggleDropdown = (name: string) => {
-    setOpenDropdown(openDropdown === name ? null : name);
-  };
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-200 dark:border-gray-800 dark:bg-gray-900">
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
+          
           {/* Logo */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center">
+            <Link to="/" className="flex items-center gap-3">
               <img
-                className="h-8 w-auto dark:hidden"
-                src="/images/logo/logo.svg"
-                alt="TailAdmin"
+                className="h-12 w-12 rounded-full object-cover dark:hidden"
+                src="/images/logo/LogoTaniBudaya.png"
+                alt="TaniBudaya"
               />
               <img
-                className="hidden h-8 w-auto dark:block"
-                src="/images/logo/logo-dark.svg"
-                alt="TailAdmin"
+                className="hidden h-12 w-12 rounded-full object-cover dark:block"
+                src="/images/logo/LogoTaniBudaya.png"
+                alt="TaniBudaya"
               />
+
+              {/* Teks TaniBudaya */}
+              <span className="text-xl font-semibold text-gray-900 dark:text-white">
+                TaniBudaya
+              </span>
             </Link>
           </div>
 
@@ -217,36 +224,34 @@ const Navbar = () => {
 
           {/* Right Side Actions */}
           <div className="flex items-center gap-2">
-            {/* Search Bar - Hidden on mobile */}
-            <div className="hidden lg:block">
-              <form>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg
-                      className="fill-gray-500 dark:fill-gray-400"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 20 20"
-                      fill="none"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        clipRule="evenodd"
-                        d="M3.04175 9.37363C3.04175 5.87693 5.87711 3.04199 9.37508 3.04199C12.8731 3.04199 15.7084 5.87693 15.7084 9.37363C15.7084 12.8703 12.8731 15.7053 9.37508 15.7053C5.87711 15.7053 3.04175 12.8703 3.04175 9.37363ZM9.37508 1.54199C5.04902 1.54199 1.54175 5.04817 1.54175 9.37363C1.54175 13.6991 5.04902 17.2053 9.37508 17.2053C11.2674 17.2053 13.003 16.5344 14.357 15.4176L17.177 18.238C17.4699 18.5309 17.9448 18.5309 18.2377 18.238C18.5306 17.9451 18.5306 17.4703 18.2377 17.1774L15.418 14.3573C16.5365 13.0033 17.2084 11.2669 17.2084 9.37363C17.2084 5.04817 13.7011 1.54199 9.37508 1.54199Z"
-                      />
-                    </svg>
-                  </span>
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    placeholder="Search..."
-                    className="h-10 w-64 rounded-lg border border-gray-200 bg-transparent py-2 pl-10 pr-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/10 dark:border-gray-800 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                  />
-                </div>
-              </form>
-            </div>
-
             <ThemeToggleButton />
+
+            {/* Cart Icon - Only for pengguna */}
+            {token && userType === "pengguna" && (
+              <Link
+                to="/keranjang"
+                className="relative p-2 text-gray-700 rounded-lg hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
+              </Link>
+            )}
 
             {token && <NotificationDropdown />}
 
@@ -333,166 +338,57 @@ const Navbar = () => {
                 Konten Budaya
               </Link>
 
+              {token && userType === "pengguna" && (
+                <Link
+                  to="/keranjang"
+                  className={`px-3 py-2 text-sm font-medium rounded-lg flex items-center gap-2 ${
+                    isActive("/keranjang")
+                      ? "bg-brand-50 text-brand-700"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Keranjang
+                  {cartCount > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      {cartCount}
+                    </span>
+                  )}
+                </Link>
+              )}
+
+              {/* Admin Menu Mobile */}
               {token && userType === "admin" && (
                 <>
-                  <Link
-                    to="/admin/list"
-                    className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                      isActive("/admin/list")
-                        ? "bg-brand-50 text-brand-700"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Admin
-                  </Link>
-                  <Link
-                    to="/pengguna/list"
-                    className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                      isActive("/pengguna/list")
-                        ? "bg-brand-50 text-brand-700"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Pengguna
-                  </Link>
-                  <Link
-                    to="/kategori/list"
-                    className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                      isActive("/kategori/list")
-                        ? "bg-brand-50 text-brand-700"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Kategori
-                  </Link>
-                  <Link
-                    to="/profile-usaha/verifikasi"
-                    className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                      isActive("/profile-usaha/verifikasi")
-                        ? "bg-brand-50 text-brand-700"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Verifikasi Usaha
-                  </Link>
-                  <Link
-                    to="/konten-budaya"
-                    className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                      isActive("/konten-budaya")
-                        ? "bg-brand-50 text-brand-700"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Kelola Konten
-                  </Link>
+                  <Link to="/admin/list" className="px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" onClick={() => setIsMobileMenuOpen(false)}>Admin</Link>
+                  <Link to="/pengguna/list" className="px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" onClick={() => setIsMobileMenuOpen(false)}>Pengguna</Link>
+                  <Link to="/kategori/list" className="px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" onClick={() => setIsMobileMenuOpen(false)}>Kategori</Link>
+                  <Link to="/profile-usaha/verifikasi" className="px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" onClick={() => setIsMobileMenuOpen(false)}>Verifikasi Usaha</Link>
+                  <Link to="/konten-budaya" className="px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" onClick={() => setIsMobileMenuOpen(false)}>Kelola Konten</Link>
                 </>
               )}
 
+              {/* Pengguna Menu Mobile */}
               {token && userType === "pengguna" && (
                 <>
-                  <Link
-                    to="/produk/list"
-                    className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                      isActive("/produk/list")
-                        ? "bg-brand-50 text-brand-700"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Produk
-                  </Link>
-                  <Link
-                    to="/profile"
-                    className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                      isActive("/profile")
-                        ? "bg-brand-50 text-brand-700"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Profil
-                  </Link>
-                  <Link
-                    to="/profile-usaha"
-                    className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                      isActive("/profile-usaha")
-                        ? "bg-brand-50 text-brand-700"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Profile Usaha
-                  </Link>
-                  <Link
-                    to="/alamat"
-                    className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                      isActive("/alamat")
-                        ? "bg-brand-50 text-brand-700"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Alamat
-                  </Link>
-                  <Link
-                    to="/notifikasi"
-                    className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                      isActive("/notifikasi")
-                        ? "bg-brand-50 text-brand-700"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Notifikasi
-                  </Link>
-                  <Link
-                    to="/konten-budaya"
-                    className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                      isActive("/konten-budaya")
-                        ? "bg-brand-50 text-brand-700"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Konten Saya
-                  </Link>
+                  <Link to="/produk/list" className="px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" onClick={() => setIsMobileMenuOpen(false)}>Produk</Link>
+                  <Link to="/profile" className="px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" onClick={() => setIsMobileMenuOpen(false)}>Profil</Link>
+                  <Link to="/profile-usaha" className="px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" onClick={() => setIsMobileMenuOpen(false)}>Profile Usaha</Link>
+                  <Link to="/alamat" className="px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" onClick={() => setIsMobileMenuOpen(false)}>Alamat</Link>
+                  <Link to="/notifikasi" className="px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" onClick={() => setIsMobileMenuOpen(false)}>Notifikasi</Link>
+                  <Link to="/konten-budaya" className="px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" onClick={() => setIsMobileMenuOpen(false)}>Konten Saya</Link>
                 </>
               )}
 
               {!token && (
                 <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-gray-200 dark:border-gray-800">
-                  <Link
-                    to="/login"
-                    className="px-4 py-2 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    to="/register-pengguna"
-                    className="px-4 py-2 text-sm font-medium text-center text-gray-900 bg-yellow-400 rounded-lg hover:bg-yellow-500"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Register
-                  </Link>
+                  <Link to="/login" className="px-4 py-2 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700" onClick={() => setIsMobileMenuOpen(false)}>Login</Link>
+                  <Link to="/register-pengguna" className="px-4 py-2 text-sm font-medium text-center text-gray-900 bg-yellow-400 rounded-lg hover:bg-yellow-500" onClick={() => setIsMobileMenuOpen(false)}>Register</Link>
                 </div>
               )}
 
               {token && (
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="mt-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
-                >
-                  Logout
-                </button>
+                <button onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} className="mt-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">Logout</button>
               )}
             </nav>
           </div>

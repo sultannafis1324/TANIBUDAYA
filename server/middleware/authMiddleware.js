@@ -87,12 +87,14 @@ export const isPenjual = async (req, res, next) => {
       return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
     }
 
+    // ✅ Cek apakah user punya role penjual atau keduanya
     if (pengguna.role !== 'penjual' && pengguna.role !== 'keduanya') {
       return res.status(403).json({ 
         message: 'Akses ditolak. Anda harus menjadi penjual untuk mengakses fitur ini.' 
       });
     }
 
+    console.log(`✅ isPenjual check passed for user: ${pengguna.nama_lengkap} (role: ${pengguna.role})`);
     next();
   } catch (error) {
     return res.status(500).json({ 

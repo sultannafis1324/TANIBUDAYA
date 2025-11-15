@@ -1,5 +1,7 @@
-const PromosiProduk = require('../models/PromosiProduk.js'); // Sesuaikan path jika perlu
-const mongoose = require('mongoose');
+// controllers/PromosiProdukController.js (Contoh nama file)
+
+import PromosiProduk from '../models/PromosiProduk.js'; // Sesuaikan path jika perlu
+import mongoose from 'mongoose';
 
 // --- FUNGSI ADMIN ---
 // (Semua rute ini harus dilindungi oleh middleware auth Admin)
@@ -9,7 +11,7 @@ const mongoose = require('mongoose');
  * @route   POST /api/admin/promo-produk
  * @access  Private (Admin)
  */
-const addProdukToPromo = async (req, res) => {
+export const addProdukToPromo = async (req, res) => {
   try {
     const { id_produk, id_promosi } = req.body;
 
@@ -41,7 +43,7 @@ const addProdukToPromo = async (req, res) => {
  * @route   DELETE /api/admin/promo-produk/:id
  * @access  Private (Admin)
  */
-const removeProdukFromPromo = async (req, res) => {
+export const removeProdukFromPromo = async (req, res) => {
   try {
     const { id } = req.params; // Ini adalah ID dari dokumen PromosiProduk
 
@@ -62,7 +64,7 @@ const removeProdukFromPromo = async (req, res) => {
  * @route   GET /api/admin/promosi/:id_promo/produk
  * @access  Private (Admin)
  */
-const getProdukByPromo = async (req, res) => {
+export const getProdukByPromo = async (req, res) => {
   try {
     const { id_promo } = req.params;
     
@@ -82,7 +84,7 @@ const getProdukByPromo = async (req, res) => {
  * @route   GET /api/admin/produk/:id_produk/promosi
  * @access  Private (Admin)
  */
-const getPromoByProduk = async (req, res) => {
+export const getPromoByProduk = async (req, res) => {
   try {
     const { id_produk } = req.params;
     
@@ -97,9 +99,4 @@ const getPromoByProduk = async (req, res) => {
   }
 };
 
-module.exports = {
-  addProdukToPromo,
-  removeProdukFromPromo,
-  getProdukByPromo,
-  getPromoByProduk
-};
+// Tidak perlu 'module.exports' lagi karena kita sudah 'export' di setiap fungsi

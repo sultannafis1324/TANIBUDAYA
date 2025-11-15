@@ -17,7 +17,7 @@ const router = express.Router();
 
 /**
  * =========================
- * 🔹 ROUTE PENJUAL / PENGGUNA
+ * 🔹 ROUTE PENJUAL / PENGGUNAa
  * =========================
  */
 // Hanya pengguna yang bisa daftar usaha (nanti otomatis jadi penjual)
